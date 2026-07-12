@@ -24,11 +24,18 @@ No account or database is required. Character data is stored in the current brow
 
 The service worker requires an HTTP server rather than opening `index.html` directly.
 
+Simple Python server:
+
 ```bash
 python -m http.server 8080
 ```
 
-Then open `http://localhost:8080`.
+Or with Wrangler:
+
+```bash
+npm install
+npm run dev
+```
 
 ## Put it on GitHub
 
@@ -43,23 +50,44 @@ git remote add origin https://github.com/YOUR-NAME/YOUR-REPOSITORY.git
 git push -u origin main
 ```
 
-## Deploy through Cloudflare Pages
+## Recommended deployment: Cloudflare Pages Git integration
 
 1. Open **Workers & Pages** in the Cloudflare dashboard.
 2. Choose **Create application** → **Pages** → **Import an existing Git repository**.
 3. Select the GitHub repository.
-4. Use these build settings:
+4. Use these settings:
 
 | Setting | Value |
 |---|---|
 | Production branch | `main` |
 | Framework preset | None |
-| Build command | `exit 0` |
+| Build command | `exit 0` or blank |
 | Build output directory | `.` |
+| Root directory | repository root |
 
-5. Deploy. Every new push to `main` will trigger a production deployment; other branches can receive preview deployments.
+Cloudflare Pages uploads the repository root as the site. Do **not** set the deploy command to `npx wrangler deploy`; that command is for Workers.
 
-The included `wrangler.toml` also allows optional command-line deployment with Wrangler.
+## Alternative: custom deploy command
+
+If the Cloudflare setup screen specifically asks for a **Deploy command**, use:
+
+```bash
+npm run deploy
+```
+
+This runs:
+
+```bash
+wrangler pages deploy .
+```
+
+The direct command is also valid:
+
+```bash
+npx wrangler pages deploy .
+```
+
+Never use `npx wrangler deploy` for this Pages project.
 
 ## Main files
 
@@ -69,6 +97,8 @@ The included `wrangler.toml` also allows optional command-line deployment with W
 - `assets/cohort-lineup.png` — current character art
 - `_headers` — Cloudflare Pages security headers
 - `service-worker.js` — offline cache
+- `wrangler.toml` — Pages configuration
+- `package.json` — local preview and Pages deployment scripts
 
 ## Rules note
 
