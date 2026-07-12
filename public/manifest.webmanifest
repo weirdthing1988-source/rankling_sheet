@@ -1,0 +1,10 @@
+{
+  "name": "Rankling Cohort Sheet",
+  "short_name": "Cohort Sheet",
+  "description": "A specialised D&D sheet for a Brass commander and five formation troopers.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0f0d0b",
+  "theme_color": "#19140f",
+  "icons": [{"src":"assets/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}

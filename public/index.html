@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#19140f">
+  <meta name="description" content="A specialised D&D character sheet for a Brass commander and five formation troopers.">
+  <title>Rankling Cohort Sheet</title>
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">⚔</div>
+        <div>
+          <p class="eyebrow">Formation character sheet</p>
+          <h1>Rankling Cohort</h1>
+        </div>
+      </div>
+      <div class="toolbar" aria-label="Character sheet tools">
+        <span id="saveStatus" class="save-status">Saved locally</span>
+        <button class="ghost-button" id="printBtn" type="button">Print</button>
+        <button class="ghost-button" id="exportBtn" type="button">Export JSON</button>
+        <label class="ghost-button file-button">Import JSON<input id="importFile" type="file" accept="application/json"></label>
+        <button class="danger-button" id="resetBtn" type="button">Reset</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero-panel panel">
+        <div class="hero-copy">
+          <span class="badge">One Brass · Five Troopers · One Turn</span>
+          <input id="characterName" class="hero-name data-input" data-path="character.name" value="" placeholder="Name the cohort" aria-label="Cohort name">
+          <div class="identity-grid">
+            <label>Player<input class="data-input" data-path="character.player" placeholder="Player name"></label>
+            <label>Species<input class="data-input" data-path="character.species"></label>
+            <label>Class<input class="data-input" data-path="character.className"></label>
+            <label>Subclass<input class="data-input" data-path="character.subclass"></label>
+            <label>Background<input class="data-input" data-path="character.background"></label>
+            <label>Level<input class="data-input number-input" data-path="character.level" type="number" min="1" max="20"></label>
+          </div>
+          <p class="hero-note">The Brass is the thinking character. The five troopers act through its commands, stances and attacks rather than receiving six separate turns.</p>
+        </div>
+        <figure class="hero-art">
+          <img src="assets/cohort-lineup.png" alt="A Brass leader and five small fae troopers marching in formation">
+        </figure>
+      </section>
+
+      <nav class="tabbar" aria-label="Character sheet sections">
+        <button class="tab active" data-tab="overview" type="button">Overview</button>
+        <button class="tab" data-tab="formation" type="button">Formation</button>
+        <button class="tab" data-tab="actions" type="button">Actions</button>
+        <button class="tab" data-tab="equipment" type="button">Equipment & Notes</button>
+      </nav>
+
+      <section id="tab-overview" class="tab-panel active">
+        <div class="dashboard-grid">
+          <article class="panel combat-panel">
+            <div class="section-heading"><div><p class="eyebrow">Core combat</p><h2>Formation Vitality</h2></div><span id="formationStateBadge" class="state-badge">Complete</span></div>
+            <div class="vitals-grid">
+              <div class="vital"><span>Armour Class</span><strong id="displayAC">16</strong><small id="acBreakdown">Base 16</small></div>
+              <div class="vital"><span>Speed</span><strong id="displaySpeed">25</strong><small>feet</small></div>
+              <div class="vital"><span>Initiative</span><strong id="displayInitiative">+0</strong><button class="mini-roll" data-roll="initiative" type="button">Roll</button></div>
+              <div class="vital"><span>Proficiency</span><strong id="displayProf">+2</strong><small>level based</small></div>
+              <div class="vital"><span>Passive Perception</span><strong id="passivePerception">10</strong><small>shared awareness</small></div>
+              <div class="vital"><span>Current Stance</span><strong id="displayStance">Shield Wall</strong><button class="mini-link" data-goto="formation" type="button">Change</button></div>
+            </div>
+
+            <div class="hp-block">
+              <div class="hp-ring" id="hpRing"><div><span id="currentHPDisplay">28</span><small>/ <span id="maxHPDisplay">28</span> HP</small></div></div>
+              <div class="hp-controls">
+                <div class="inline-fields">
+                  <label>Current HP<input class="data-input number-input" data-path="character.currentHP" type="number" min="0"></label>
+                  <label>Maximum HP<input class="data-input number-input" data-path="character.maxHP" type="number" min="1"></label>
+                  <label>Temporary HP<input class="data-input number-input" data-path="character.tempHP" type="number" min="0"></label>
+                </div>
+                <div class="damage-row">
+                  <input id="hpAmount" type="number" min="0" value="1" aria-label="Hit point amount">
+                  <button id="damageBtn" class="danger-button" type="button">Take Damage</button>
+                  <button id="healBtn" class="success-button" type="button">Heal</button>
+                </div>
+                <div class="rest-row">
+                  <button id="shortRestBtn" class="ghost-button" type="button">Short Rest</button>
+                  <button id="longRestBtn" class="ghost-button" type="button">Long Rest</button>
+                  <label class="check-line"><input id="linkDamage" class="data-input" data-path="formation.linkDetachedDamage" type="checkbox"> Detached damage also reduces Formation HP</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="secondary-stats">
+              <label>Base AC<input class="data-input number-input" data-path="character.baseAC" type="number" min="1"></label>
+              <label>Base speed<input class="data-input number-input" data-path="character.baseSpeed" type="number" min="0" step="5"></label>
+              <label>Hit Dice<input class="data-input number-input" data-path="character.hitDiceRemaining" type="number" min="0"><span>/</span><input class="data-input number-input" data-path="character.hitDiceMax" type="number" min="1"></label>
+            </div>
+          </article>
+
+          <article class="panel ability-panel">
+            <div class="section-heading"><div><p class="eyebrow">Ability scores</p><h2>The Brass</h2></div><small>Troopers use the Brass's modifiers unless a feature says otherwise.</small></div>
+            <div id="abilityGrid" class="ability-grid"></div>
+          </article>
+
+          <article class="panel skills-panel">
+            <div class="section-heading"><div><p class="eyebrow">Checks</p><h2>Skills & Saves</h2></div><small>Click a total to roll.</small></div>
+            <div class="checks-columns">
+              <div><h3>Saving Throws</h3><div id="saveList" class="check-list"></div></div>
+              <div><h3>Skills</h3><div id="skillList" class="check-list skill-list"></div></div>
+            </div>
+          </article>
+
+          <article class="panel rules-panel">
+            <div class="section-heading"><div><p class="eyebrow">Species rules</p><h2>Cohort Bond</h2></div></div>
+            <div class="rule-stack">
+              <details open><summary>Distributed Character</summary><p>The Brass and formed troopers occupy one Medium space, use one turn and share Formation HP and conditions. Troopers do not gain independent attacks unless a feature explicitly commands one.</p></details>
+              <details><summary>Dependent Troopers</summary><p>A trooper can eat, rest, maintain equipment and follow a simple instruction, but cannot establish its own combat objective. Without an instruction it seeks its recognised leader or returns to the Brass.</p></details>
+              <details><summary>Detached Trooper</summary><p>Only one trooper may be deliberately detached at a time. It occupies a Small space, uses its own AC and HP, and acts immediately after its temporary leader.</p></details>
+              <details><summary>Leaderless Behaviour</summary><p>A trooper follows its temporary leader, protects itself from immediate danger, returns to the visible Brass, searches the Brass's last known location, then shelters and waits for authority.</p></details>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="tab-formation" class="tab-panel">
+        <div class="formation-layout">
+          <article class="panel stance-panel">
+            <div class="section-heading"><div><p class="eyebrow">Bonus action</p><h2>Formation Stances</h2></div><span id="activeStanceBadge" class="badge">Shield Wall active</span></div>
+            <div id="stanceGrid" class="stance-grid"></div>
+          </article>
+
+          <article class="panel roster-panel">
+            <div class="section-heading"><div><p class="eyebrow">Five bonded dependants</p><h2>Trooper Roster</h2></div><div class="legend"><span><i class="dot formed"></i>Formed</span><span><i class="dot detached"></i>Detached</span><span><i class="dot downed"></i>Downed</span></div></div>
+            <div id="trooperGrid" class="trooper-grid"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="tab-actions" class="tab-panel">
+        <div class="actions-layout">
+          <article class="panel">
+            <div class="section-heading"><div><p class="eyebrow">Attack action</p><h2>Weapons & Manoeuvres</h2></div><span id="attackSummary" class="badge">Attack +5</span></div>
+            <div id="actionGrid" class="action-grid"></div>
+          </article>
+          <article class="panel dice-panel">
+            <div class="section-heading"><div><p class="eyebrow">Shared roller</p><h2>Dice Tray</h2></div></div>
+            <div class="quick-dice" id="quickDice"></div>
+            <div class="custom-roll"><input id="customRoll" value="1d20" aria-label="Custom dice formula"><button id="customRollBtn" type="button">Roll</button></div>
+            <div id="rollResult" class="roll-result"><strong>Ready</strong><span>Choose a roll.</span></div>
+            <ol id="rollHistory" class="roll-history"></ol>
+          </article>
+        </div>
+      </section>
+
+      <section id="tab-equipment" class="tab-panel">
+        <div class="notes-layout">
+          <article class="panel">
+            <div class="section-heading"><div><p class="eyebrow">Inventory</p><h2>Equipment</h2></div></div>
+            <textarea class="data-input large-text" data-path="character.equipment" placeholder="Armour, leader's spear, five swords, five shields, supplies..."></textarea>
+          </article>
+          <article class="panel">
+            <div class="section-heading"><div><p class="eyebrow">Roleplay</p><h2>Cohort Notes</h2></div></div>
+            <textarea class="data-input large-text" data-path="character.notes" placeholder="Names, personalities, temporary leaders, promises, history..."></textarea>
+          </article>
+          <article class="panel full-span">
+            <div class="section-heading"><div><p class="eyebrow">Table record</p><h2>Session Log</h2></div></div>
+            <textarea class="data-input session-text" data-path="character.sessionLog" placeholder="Session notes and formation events..."></textarea>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>Rankling Cohort Sheet · Static, local-first and Cloudflare Pages ready.</span>
+      <span>No character data leaves this browser unless you export it.</span>
+    </footer>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js" defer></script>
+</body>
+</html>
