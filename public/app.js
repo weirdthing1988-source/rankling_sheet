@@ -1,7 +1,7 @@
 'use strict';
 
 const STORAGE_KEY = 'rankling-cohort-sheet-v1';
-const CURRENT_VERSION = 5;
+const CURRENT_VERSION = 6;
 const abilities = ['str','dex','con','int','wis','cha'];
 const abilityNames = {str:'Strength',dex:'Dexterity',con:'Constitution',int:'Intelligence',wis:'Wisdom',cha:'Charisma'};
 const skills = [
@@ -84,7 +84,7 @@ function defaultState() {
       customFeatures:'',sessionLog:'',
       artwork:{dataUrl:'',fit:'cover',zoom:100,x:50,y:50}
     },
-    formation:{stance:'shield',secondaryStance:'',ward:'',linkDetachedDamage:true},
+    formation:{stance:'',secondaryStance:'',ward:'',linkDetachedDamage:true},
     resources:{commandDiceCurrent:4,commandDiceMax:4,commandDie:6,lastStandAvailable:true},
     troopers:[
       defaultTrooper(1,'Pip','Chestnut'),defaultTrooper(2,'Tansy','Cocoa'),defaultTrooper(3,'Nell','Rose'),
@@ -283,18 +283,6 @@ function renderArtwork(){
   image.style.objectPosition='center';
   image.style.transform='scale(1)';
   image.style.transformOrigin='center';
-  const title=document.getElementById('artworkTitle'),caption=document.getElementById('artworkCaption'),chipRow=document.getElementById('artworkChipRow');
-  if(title)title.textContent=art.title;
-  if(caption)caption.textContent=art.caption;
-  if(chipRow){
-    chipRow.innerHTML=[
-      ['march','Formation marching'],
-      ['shield','Shield Wall'],
-      ['spearhead','Spearhead'],
-      ['assault','Assault Rank'],
-      ['escort','Escort Formation']
-    ].map(([artKey,label])=>`<span class="artwork-chip${artKey===key?' active':''}${artKey!==key && artKey===state.formation.stance && !stanceAvailable(artKey)?' unavailable':''}">${label}</span>`).join('');
-  }
 }
 function setupArtworkEditor(){ return; }
 
@@ -336,8 +324,8 @@ function renderStances(){
     const stance=stanceRules(key),active=primaryStanceKey()===key,secondary=secondaryStanceKey()===key,available=stanceAvailable(key),card=document.createElement('div');
     card.className=`stance-card${active?' active':''}${secondary?' secondary':''}`;
     const lockReason=level()<3?'Unlocks at level 3':formedCount()<stance.min?`Needs ${stance.min} formed`:'Adopt stance';
-    card.innerHTML=`<div class="stance-title-row"><h3>${stance.name}</h3>${secondary?'<span class="secondary-badge">Secondary</span>':''}</div><p>${stance.description}</p><div class="stance-mods">${stance.mods.map(m=>`<span>${m}</span>`).join('')}</div>${level()>=18&&secondary?`<small class="lesser-benefit">${secondaryBenefitText(key)}</small>`:''}<button type="button" ${!available?'disabled':''} class="${active?'active':''}">${active?'Primary stance':available?lockReason:lockReason}</button>`;
-    card.querySelector('button').addEventListener('click',()=>{if(!available)return showToast(lockReason);state.formation.stance=key;if(state.formation.secondaryStance===key)state.formation.secondaryStance='';renderAll();scheduleSave();showToast(`${stance.name} adopted.`);});grid.appendChild(card);
+    card.innerHTML=`<div class="stance-title-row"><h3>${stance.name}</h3>${secondary?'<span class="secondary-badge">Secondary</span>':''}</div><p>${stance.description}</p><div class="stance-mods">${stance.mods.map(m=>`<span>${m}</span>`).join('')}</div>${level()>=18&&secondary?`<small class="lesser-benefit">${secondaryBenefitText(key)}</small>`:''}<button type="button" ${!available?'disabled':''} class="${active?'active':''}">${active?'Return to Phalanx':available?lockReason:lockReason}</button>`;
+    card.querySelector('button').addEventListener('click',()=>{if(!available)return showToast(lockReason);if(active){state.formation.stance='';state.formation.secondaryStance='';renderAll();scheduleSave();showToast('Returned to Phalanx formation.');return;}state.formation.stance=key;if(state.formation.secondaryStance===key)state.formation.secondaryStance='';renderAll();scheduleSave();showToast(`${stance.name} adopted.`);});grid.appendChild(card);
   });
 }
 
@@ -437,9 +425,9 @@ function renderActions(){
 function renderDynamic(){
   const stance=primaryStance(),p=prof(),ac=Number(state.character.baseAC)+(stance?.ac||0),speed=Math.max(0,Number(state.character.baseSpeed)+(stance?.speed||0)),initiative=mod(state.character.abilities.dex)+Number(state.character.initiativeBonus||0),perceptionRank=Number(state.character.skills.Perception||0),passive=10+mod(state.character.abilities.wis)+p*perceptionRank;
   document.getElementById('displayAC').textContent=ac;document.getElementById('acBreakdown').textContent=`Base ${state.character.baseAC}${stance?.ac?` · ${stance.name} ${fmt(stance.ac)}`:''}`;document.getElementById('displaySpeed').textContent=speed;document.getElementById('displayInitiative').textContent=fmt(initiative);document.getElementById('displayProf').textContent=fmt(p);document.getElementById('passivePerception').textContent=passive;
-  const primaryName=stance?.name||'No active stance',secondaryName=secondaryStanceKey()?` + ${stanceRules(secondaryStanceKey()).name}`:'';document.getElementById('displayStance').textContent=`${primaryName}${secondaryName}`;
+  const primaryName=stance?.name||'Phalanx Formation',secondaryName=secondaryStanceKey()?` + ${stanceRules(secondaryStanceKey()).name}`:'';document.getElementById('displayStance').textContent=`${primaryName}${secondaryName}`;
   document.getElementById('currentHPDisplay').textContent=state.character.currentHP;document.getElementById('maxHPDisplay').textContent=state.character.maxHP;const hpPercent=Math.max(0,Math.min(1,state.character.currentHP/Math.max(1,state.character.maxHP)));document.getElementById('hpRing').style.setProperty('--hp-angle',`${hpPercent*360}deg`);
-  const fState=formationState(),badge=document.getElementById('formationStateBadge');badge.textContent=fState;badge.style.color=fState==='Complete'?'var(--gold-bright)':fState==='Reduced'?'var(--blue)':'var(--red-bright)';document.getElementById('activeStanceBadge').textContent=stance?`${stance.name} primary`:`${level()<3?'Unlocks at level 3':'Formation unavailable'}`;
+  const fState=formationState(),badge=document.getElementById('formationStateBadge');badge.textContent=fState;badge.style.color=fState==='Complete'?'var(--gold-bright)':fState==='Reduced'?'var(--blue)':'var(--red-bright)';document.getElementById('activeStanceBadge').textContent=stance?`${stance.name} primary`:`${level()<3?'Phalanx formation':'Phalanx formation'}`;
   const auto=Boolean(state.character.autoLevelStats);document.getElementById('maxHPInput').disabled=auto;document.getElementById('hitDiceMaxInput').disabled=auto;document.getElementById('maxHPHint').textContent=auto?`Fighter average: ${calculatedMaxHP()}`:'manual';
   renderCommandResources();renderOverviewTroopers();renderSpeciesFeatures();renderFighterFeatures();renderActions();
 }
