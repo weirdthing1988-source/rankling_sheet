@@ -1,7 +1,7 @@
 'use strict';
 
 const STORAGE_KEY = 'rankling-cohort-sheet-v1';
-const CURRENT_VERSION = 6;
+const CURRENT_VERSION = 7;
 const abilities = ['str','dex','con','int','wis','cha'];
 const abilityNames = {str:'Strength',dex:'Dexterity',con:'Constitution',int:'Intelligence',wis:'Wisdom',cha:'Charisma'};
 const skills = [
@@ -22,12 +22,21 @@ const trooperWeapons = {
 const basicOrders = ['Follow','Slash','Help','Guard','Hold Position','Return'];
 const delegatedOrders = ['Dash','Disengage','Interpose'];
 
-const stanceArtwork = {
-  march:{src:'assets/art-march.png',title:'Formation Marching',caption:'Default overview art. When a primary stance is active, the image switches automatically.',alt:'The Brass leader and five fae troopers marching in formation.'},
-  shield:{src:'assets/art-shield-wall.png',title:'Shield Wall',caption:'Displayed whenever Shield Wall is the current active stance.',alt:'The Rankling cohort in a tight shield wall.'},
-  spearhead:{src:'assets/art-spearhead.png',title:'Spearhead',caption:'Displayed whenever Spearhead is the current active stance.',alt:'The Rankling cohort driving forward in a spearhead charge.'},
-  assault:{src:'assets/art-assault-rank.png',title:'Assault Rank',caption:'Displayed whenever Assault Rank is the current active stance.',alt:'The Rankling cohort charging aggressively in assault formation.'},
-  escort:{src:'assets/art-escort-formation.png',title:'Escort Formation',caption:'Displayed whenever Escort Formation is the current active stance.',alt:'The Rankling cohort protecting a taller ward in escort formation.'}
+const stanceArtworkSets = {
+  female:{
+    march:{src:'assets/art-march.png',alt:'The female Brass leader and five fae troopers marching in formation.'},
+    shield:{src:'assets/art-shield-wall.png',alt:'The female Rankling cohort in a tight shield wall.'},
+    spearhead:{src:'assets/art-spearhead.png',alt:'The female Rankling cohort driving forward in a spearhead charge.'},
+    assault:{src:'assets/art-assault-rank.png',alt:'The female Rankling cohort charging aggressively in assault formation.'},
+    escort:{src:'assets/art-escort-formation.png',alt:'The female Rankling cohort protecting a taller ward in escort formation.'}
+  },
+  male:{
+    march:{src:'assets/art-march-male.png',alt:'The male Brass leader and five fae troopers marching in formation.'},
+    shield:{src:'assets/art-shield-wall-male.png',alt:'The male Rankling cohort in a tight shield wall.'},
+    spearhead:{src:'assets/art-spearhead-male.png',alt:'The male Rankling cohort driving forward in a spearhead charge.'},
+    assault:{src:'assets/art-assault-rank-male.png',alt:'The male Rankling cohort charging aggressively in assault formation.'},
+    escort:{src:'assets/art-escort-formation-male.png',alt:'The male Rankling cohort protecting a taller ward in escort formation.'}
+  }
 };
 
 const speciesFeatures = [
@@ -74,7 +83,7 @@ function defaultState() {
   return {
     version: CURRENT_VERSION,
     character: {
-      name:'The Copper Rank',player:'',species:'Rankling',className:'Fighter',subclass:'Cohort Commander',fightingStyle:'Interception',background:'Soldier',level:3,
+      name:'The Copper Rank',player:'',species:'Rankling',className:'Fighter',subclass:'Cohort Commander',fightingStyle:'Interception',background:'Soldier',artGender:'female',level:3,
       baseAC:16,baseSpeed:25,currentHP:28,maxHP:28,bonusHP:0,tempHP:0,hitDiceRemaining:3,hitDiceMax:3,
       autoLevelStats:true,initiativeBonus:0,abilities:{str:16,dex:12,con:14,int:14,wis:10,cha:8},
       saves:{str:true,dex:false,con:true,int:false,wis:false,cha:false},
@@ -126,6 +135,7 @@ function normaliseState(candidate) {
   candidate.rollHistory=Array.isArray(candidate.rollHistory)?candidate.rollHistory:[];
   if(previousVersion<CURRENT_VERSION&&candidate.character.subclass==='Battle Master') candidate.character.subclass='Cohort Commander';
   if(!candidate.character.fightingStyle) candidate.character.fightingStyle='Interception';
+  if(!['female','male'].includes(candidate.character.artGender)) candidate.character.artGender='female';
   candidate.character.artwork={...defaults.character.artwork,...(candidate.character.artwork||{})};
   candidate.character.artwork.fit=['cover','contain'].includes(candidate.character.artwork.fit)?candidate.character.artwork.fit:'cover';
   candidate.character.artwork.zoom=clamp(candidate.character.artwork.zoom??100,50,200);
@@ -273,10 +283,14 @@ function syncBoundInputs(){document.querySelectorAll('.data-input[data-path]').f
 function currentArtworkKey(){
   return primaryStanceKey() || 'march';
 }
+function currentArtworkSet(){
+  return stanceArtworkSets[state.character.artGender]||stanceArtworkSets.female;
+}
 function renderArtwork(){
   const image=document.getElementById('heroImage');if(!image)return;
   const key=currentArtworkKey();
-  const art=stanceArtwork[key]||stanceArtwork.march;
+  const set=currentArtworkSet();
+  const art=set[key]||set.march;
   image.src=art.src;
   image.alt=art.alt;
   image.style.objectFit='cover';
@@ -324,8 +338,14 @@ function renderStances(){
     const stance=stanceRules(key),active=primaryStanceKey()===key,secondary=secondaryStanceKey()===key,available=stanceAvailable(key),card=document.createElement('div');
     card.className=`stance-card${active?' active':''}${secondary?' secondary':''}`;
     const lockReason=level()<3?'Unlocks at level 3':formedCount()<stance.min?`Needs ${stance.min} formed`:'Adopt stance';
-    card.innerHTML=`<div class="stance-title-row"><h3>${stance.name}</h3>${secondary?'<span class="secondary-badge">Secondary</span>':''}</div><p>${stance.description}</p><div class="stance-mods">${stance.mods.map(m=>`<span>${m}</span>`).join('')}</div>${level()>=18&&secondary?`<small class="lesser-benefit">${secondaryBenefitText(key)}</small>`:''}<button type="button" ${!available?'disabled':''} class="${active?'active':''}">${active?'Return to Phalanx':available?lockReason:lockReason}</button>`;
-    card.querySelector('button').addEventListener('click',()=>{if(!available)return showToast(lockReason);if(active){state.formation.stance='';state.formation.secondaryStance='';renderAll();scheduleSave();showToast('Returned to Phalanx formation.');return;}state.formation.stance=key;if(state.formation.secondaryStance===key)state.formation.secondaryStance='';renderAll();scheduleSave();showToast(`${stance.name} adopted.`);});grid.appendChild(card);
+    const buttonText=active?'Return to Phalanx':available?'Adopt stance':lockReason;
+    card.innerHTML=`<div class="stance-title-row"><h3>${stance.name}</h3>${secondary?'<span class="secondary-badge">Secondary</span>':''}</div><p>${stance.description}</p><div class="stance-mods">${stance.mods.map(m=>`<span>${m}</span>`).join('')}</div>${level()>=18&&secondary?`<small class="lesser-benefit">${secondaryBenefitText(key)}</small>`:''}<button type="button" ${!available&& !active?'disabled':''} class="${active?'active':''}">${buttonText}</button>`;
+    card.querySelector('button').addEventListener('click',()=>{
+      if(active){state.formation.stance='';if(state.formation.secondaryStance===key)state.formation.secondaryStance='';renderAll();scheduleSave();return showToast('Returned to Phalanx Formation.');}
+      if(!available)return showToast(lockReason);
+      state.formation.stance=key;if(state.formation.secondaryStance===key)state.formation.secondaryStance='';renderAll();scheduleSave();showToast(`${stance.name} adopted.`);
+    });
+    grid.appendChild(card);
   });
 }
 
@@ -427,7 +447,7 @@ function renderDynamic(){
   document.getElementById('displayAC').textContent=ac;document.getElementById('acBreakdown').textContent=`Base ${state.character.baseAC}${stance?.ac?` · ${stance.name} ${fmt(stance.ac)}`:''}`;document.getElementById('displaySpeed').textContent=speed;document.getElementById('displayInitiative').textContent=fmt(initiative);document.getElementById('displayProf').textContent=fmt(p);document.getElementById('passivePerception').textContent=passive;
   const primaryName=stance?.name||'Phalanx Formation',secondaryName=secondaryStanceKey()?` + ${stanceRules(secondaryStanceKey()).name}`:'';document.getElementById('displayStance').textContent=`${primaryName}${secondaryName}`;
   document.getElementById('currentHPDisplay').textContent=state.character.currentHP;document.getElementById('maxHPDisplay').textContent=state.character.maxHP;const hpPercent=Math.max(0,Math.min(1,state.character.currentHP/Math.max(1,state.character.maxHP)));document.getElementById('hpRing').style.setProperty('--hp-angle',`${hpPercent*360}deg`);
-  const fState=formationState(),badge=document.getElementById('formationStateBadge');badge.textContent=fState;badge.style.color=fState==='Complete'?'var(--gold-bright)':fState==='Reduced'?'var(--blue)':'var(--red-bright)';document.getElementById('activeStanceBadge').textContent=stance?`${stance.name} primary`:`${level()<3?'Phalanx formation':'Phalanx formation'}`;
+  const fState=formationState(),badge=document.getElementById('formationStateBadge');badge.textContent=fState;badge.style.color=fState==='Complete'?'var(--gold-bright)':fState==='Reduced'?'var(--blue)':'var(--red-bright)';document.getElementById('activeStanceBadge').textContent=stance?`${stance.name} primary`:`${level()<3?'Unlocks at level 3':'Phalanx active'}`;
   const auto=Boolean(state.character.autoLevelStats);document.getElementById('maxHPInput').disabled=auto;document.getElementById('hitDiceMaxInput').disabled=auto;document.getElementById('maxHPHint').textContent=auto?`Fighter average: ${calculatedMaxHP()}`:'manual';
   renderCommandResources();renderOverviewTroopers();renderSpeciesFeatures();renderFighterFeatures();renderActions();
 }
@@ -456,9 +476,67 @@ function setupControls(){
   document.getElementById('damageBtn').addEventListener('click',()=>{applyFormationDamage(document.getElementById('hpAmount').value);renderAll();scheduleSave();});document.getElementById('healBtn').addEventListener('click',()=>{healFormation(document.getElementById('hpAmount').value);renderAll();scheduleSave();});
   document.getElementById('shortRestBtn').addEventListener('click',()=>{const available=state.character.hitDiceRemaining,answer=prompt(`Spend how many Hit Dice? (${available} available)` ,available>0?'1':'0'),count=Math.max(0,Math.min(available,Number(answer||0)));let recovered=0;if(count){const formula=`${count}d10${fmt(mod(state.character.abilities.con)*count)}`,result=parseAndRoll(formula);recovered=result.total;healFormation(recovered);state.character.hitDiceRemaining-=count;recordHistory('Short-rest healing',formula,result.total,result.detail);}state.resources.commandDiceCurrent=commandDiceProfile().max;renderAll();scheduleSave();showToast(`Short Rest complete${count?`; recovered ${recovered} HP`:''}. Command Dice restored.`);});
   document.getElementById('longRestBtn').addEventListener('click',()=>{state.character.currentHP=state.character.maxHP;state.character.tempHP=0;state.character.hitDiceRemaining=Math.min(state.character.hitDiceMax,state.character.hitDiceRemaining+Math.max(1,Math.floor(state.character.hitDiceMax/2)));state.resources.commandDiceCurrent=commandDiceProfile().max;state.resources.lastStandAvailable=true;state.troopers.forEach(t=>{t.currentHP=t.maxHP;if(t.status==='downed')t.status='formed';if(t.status==='formed'){t.leader='The Brass';t.order='Form up';}});renderAll();scheduleSave();showToast('Long Rest completed.');});
-  document.getElementById('printBtn').addEventListener('click',()=>window.print());document.getElementById('exportBtn').addEventListener('click',exportState);document.getElementById('importFile').addEventListener('change',importState);document.getElementById('resetBtn').addEventListener('click',()=>{if(confirm('Reset the entire sheet to its default character?')){state=defaultState();syncDerivedStats({preserveDamage:false});localStorage.removeItem(STORAGE_KEY);renderAll();scheduleSave();showToast('Sheet reset.');}});
+  document.getElementById('printBtn').addEventListener('click',()=>window.print());document.getElementById('pdfBtn').addEventListener('click',exportPdf);document.getElementById('exportBtn').addEventListener('click',exportState);document.getElementById('talespireBtn').addEventListener('click',exportTaleSpireState);document.getElementById('importFile').addEventListener('change',importState);document.getElementById('resetBtn').addEventListener('click',()=>{if(confirm('Reset the entire sheet to its default character?')){state=defaultState();syncDerivedStats({preserveDamage:false});localStorage.removeItem(STORAGE_KEY);renderAll();scheduleSave();showToast('Sheet reset.');}});
 }
 function exportState(){const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`${(state.character.name||'rankling-cohort').toLowerCase().replace(/[^a-z0-9]+/g,'-')}.json`;a.click();URL.revokeObjectURL(url);showToast('Character exported.');}
 function importState(event){const file=event.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{state=normaliseState(mergeDeep(defaultState(),JSON.parse(reader.result)));syncDerivedStats();renderAll();scheduleSave();showToast('Character imported.');}catch{showToast('That file is not valid character JSON.');}event.target.value='';};reader.readAsText(file);}
+
+function exportPdf(){
+  showToast('Choose “Save as PDF” in the print dialog.');
+  window.print();
+}
+function buildTaleSpirePayload(){
+  const primary=primaryStance();
+  return {
+    schema:'rankling-cohort.talespire.v1',
+    exportedAt:new Date().toISOString(),
+    identity:{
+      name:state.character.name,
+      player:state.character.player,
+      species:state.character.species,
+      class:state.character.className,
+      subclass:state.character.subclass,
+      level:level(),
+      gender:state.character.artGender,
+      background:state.character.background,
+      fightingStyle:state.character.fightingStyle
+    },
+    stats:{
+      ac:Number(document.getElementById('displayAC')?.textContent||state.character.baseAC),
+      speed:Number(document.getElementById('displaySpeed')?.textContent||state.character.baseSpeed),
+      initiative:mod(state.character.abilities.dex)+Number(state.character.initiativeBonus||0),
+      proficiency:prof(),
+      passivePerception:Number(document.getElementById('passivePerception')?.textContent||0),
+      hp:{current:state.character.currentHP,max:state.character.maxHP,temp:state.character.tempHP},
+      abilities:state.character.abilities,
+      saves:state.character.saves,
+      skills:state.character.skills
+    },
+    formation:{
+      state:formationState(),
+      primaryStance:primary?primary.name:'Phalanx Formation',
+      secondaryStance:secondaryStanceKey()?stanceRules(secondaryStanceKey()).name:'',
+      ward:state.formation.ward,
+      commandDice:{current:state.resources.commandDiceCurrent,max:state.resources.commandDiceMax,die:state.resources.commandDie}
+    },
+    troopers:state.troopers.map((t,index)=>({
+      id:t.id,name:t.name,status:t.status,leader:t.leader,order:t.order,weapon:t.weapon,shield:t.shield,
+      personalHP:t.currentHP,personalMaxHP:t.maxHP,sharedChunk:trooperSharedSegment(index),ac:t.ac
+    })),
+    equipment:state.character.equipment,
+    notes:state.character.notes,
+    customFeatures:state.character.customFeatures
+  };
+}
+function exportTaleSpireState(){
+  const payload=buildTaleSpirePayload();
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;
+  a.download=`${(state.character.name||'rankling-cohort').toLowerCase().replace(/[^a-z0-9]+/g,'-')}.talespire.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('TaleSpire JSON exported.');
+}
+
 function init(){state=normaliseState(state);syncDerivedStats();bindInputs();setupTabs();setupDice();setupControls();setupArtworkEditor();renderAll();if('serviceWorker' in navigator)navigator.serviceWorker.register('./service-worker.js').catch(()=>{});}
 document.addEventListener('DOMContentLoaded',init);

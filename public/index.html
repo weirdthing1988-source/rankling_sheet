@@ -23,7 +23,9 @@
       <div class="toolbar" aria-label="Character sheet tools">
         <span id="saveStatus" class="save-status">Saved locally</span>
         <button class="ghost-button" id="printBtn" type="button">Print</button>
+        <button class="ghost-button" id="pdfBtn" type="button">Export PDF</button>
         <button class="ghost-button" id="exportBtn" type="button">Export JSON</button>
+        <button class="ghost-button" id="talespireBtn" type="button">Export TaleSpire JSON</button>
         <label class="ghost-button file-button">Import JSON<input id="importFile" type="file" accept="application/json"></label>
         <button class="danger-button" id="resetBtn" type="button">Reset</button>
       </div>
@@ -41,6 +43,7 @@
             <label>Subclass<input class="data-input" data-path="character.subclass"></label>
             <label>Fighting Style<select class="data-input" data-path="character.fightingStyle"><option>Interception</option><option>Protection</option><option>Defense</option><option>Dueling</option><option>Superior Technique</option><option>Other</option></select></label>
             <label>Background<input class="data-input" data-path="character.background"></label>
+            <label>Cohort appearance<select id="cohortAppearance" class="data-input" data-path="character.artGender"><option value="female">Female cohort</option><option value="male">Male cohort</option></select><small class="field-hint">Changes all five stance images</small></label>
             <label>Level<input class="data-input number-input" data-path="character.level" type="number" min="1" max="20"></label>
           </div>
           <p class="hero-note">The Brass is the thinking character. The five troopers act through its commands, stances and attacks rather than receiving six separate turns.</p>
