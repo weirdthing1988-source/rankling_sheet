@@ -39,6 +39,7 @@
             <label>Species<input class="data-input" data-path="character.species"></label>
             <label>Class<input class="data-input" data-path="character.className"></label>
             <label>Subclass<input class="data-input" data-path="character.subclass"></label>
+            <label>Fighting Style<select class="data-input" data-path="character.fightingStyle"><option>Interception</option><option>Protection</option><option>Defense</option><option>Dueling</option><option>Superior Technique</option><option>Other</option></select></label>
             <label>Background<input class="data-input" data-path="character.background"></label>
             <label>Level<input class="data-input number-input" data-path="character.level" type="number" min="1" max="20"></label>
           </div>
@@ -126,6 +127,7 @@
         <div class="formation-layout">
           <article class="panel stance-panel">
             <div class="section-heading"><div><p class="eyebrow">Bonus action</p><h2>Formation Stances</h2></div><span id="activeStanceBadge" class="badge">Shield Wall active</span></div>
+            <div id="commandResourcePanel" class="command-resource-panel"></div>
             <div id="stanceGrid" class="stance-grid"></div>
           </article>
 
@@ -139,18 +141,12 @@
       <section id="tab-features" class="tab-panel">
         <div class="features-layout">
           <article class="panel feature-panel">
-            <div class="section-heading"><div><p class="eyebrow">Species features</p><h2>Cohort Bond</h2></div><span class="badge">Rankling</span></div>
-            <div class="rule-stack">
-              <details open><summary>Distributed Character</summary><p>The Brass and formed troopers occupy one Medium space, use one turn and share Formation HP and conditions. Troopers do not gain independent attacks unless a feature explicitly commands one.</p></details>
-              <details><summary>Dependent Troopers</summary><p>A trooper can eat, rest, maintain equipment and follow a simple instruction, but cannot establish its own combat objective. Without an instruction it seeks its recognised leader or returns to the Brass.</p></details>
-              <details><summary>Detached Trooper</summary><p>Only one trooper may be deliberately detached at a time. It occupies a Small space, uses its own AC and HP, and acts immediately after its temporary leader.</p></details>
-              <details><summary>Leaderless Behaviour</summary><p>A trooper follows its temporary leader, protects itself from immediate danger, returns to the visible Brass, searches the Brass's last known location, then shelters and waits for authority.</p></details>
-              <details><summary>Shared Vitality Chunks</summary><p>The Formation HP maximum is divided into six proportional chunks: one for the Brass and one for each trooper. These chunks are a visual representation of shared vitality, not six separately targetable health pools. A detached trooper temporarily uses its own personal HP.</p></details>
-            </div>
+            <div class="section-heading"><div><p class="eyebrow">Species features</p><h2>Rankling Cohort</h2></div><span class="badge">Always active</span></div>
+            <div id="speciesFeatureGrid" class="species-feature-grid"></div>
           </article>
 
           <article class="panel feature-panel">
-            <div class="section-heading"><div><p class="eyebrow">Level-derived benefits</p><h2>Fighter Progression</h2></div><span id="fighterLevelBadge" class="badge">Level 3</span></div>
+            <div class="section-heading"><div><p class="eyebrow">Level-derived benefits</p><h2>Fighter & Cohort Commander</h2></div><span id="fighterLevelBadge" class="badge">Level 3</span></div>
             <div id="derivedFeatureSummary" class="derived-feature-summary"></div>
             <div id="fighterFeatureGrid" class="fighter-feature-grid"></div>
           </article>
