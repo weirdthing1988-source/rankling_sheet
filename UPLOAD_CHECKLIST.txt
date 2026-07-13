@@ -1,6 +1,8 @@
+RANKLING COHORT SHEET v1.9 — GITHUB / CLOUDFLARE UPLOAD CHECKLIST
+
 UPLOAD THESE ITEMS TO THE ROOT OF YOUR GITHUB REPOSITORY:
 
-public/                 (folder; includes index.html, CSS, JS, artwork and icons)
+public/                 (folder; includes index.html, CSS, JS, all formation art, Mega Unison art and icons)
 LICENSE
 README.md
 wrangler.jsonc
@@ -12,3 +14,5 @@ There should be no package.json or package-lock.json in this no-install edition.
 Cloudflare build command: leave blank
 Cloudflare deploy command: npx --yes wrangler@4.110.0 deploy
 Cloudflare variable: SKIP_DEPENDENCY_INSTALL=true
+Worker name: rankling-cohort-sheet
+workers.dev route: enabled by wrangler.jsonc

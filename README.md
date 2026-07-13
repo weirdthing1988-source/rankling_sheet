@@ -1,20 +1,49 @@
-# Rankling Cohort Sheet v1.2 — Cloudflare Workers Static Assets
+# Rankling Cohort Sheet v1.9 — Mega Unison
 
-A static D&D character sheet for one Brass commander and five formation troopers.
+A static D&D 5e character sheet for one Rankling Brass and five bonded Troopers. It is deployable as a Cloudflare Worker with Static Assets and contains no `package.json` or lockfile.
 
-This edition contains **no `package.json` and no lockfile**. That prevents Cloudflare Workers Builds from running `npm clean-install`, which previously stalled with the npm error `Exit handler never called!`.
+## Mega Unison
 
-## What changed in v1.2
+At Fighter level 15, the sheet unlocks **Mega Unison**.
 
-- Added a dedicated **Features** tab.
-- Moved Cohort Bond/species benefits off the Overview tab.
-- Added a dynamic Fighter progression panel and level-derived combat summary.
-- Added a compact five-trooper row to Overview.
-- Each formed trooper now displays one of the shared Formation HP chunks; the Brass retains the sixth chunk.
-- Level and Constitution can automatically update maximum HP using Fighter average HP.
-- Level automatically updates proficiency bonus, Hit Dice, attacks per Attack action, Formation save DC, superiority dice, and detached-trooper HP/AC.
-- Added an automatic-level-stat toggle and a Bonus Maximum HP field for feats or campaign bonuses.
-- Existing browser saves remain compatible.
+Activation requires:
+
+- Heroic Inspiration;
+- all five Troopers formed;
+- the once-per-Long-Rest use to be available.
+
+The transformation lasts for a number of rounds equal to Proficiency Bonus. The website tracks the remaining rounds and automatically applies the principal numerical effects:
+
+- +1 AC;
+- walking speed 30 feet;
+- flying speed 30 feet, with a reminder that the character must end the turn on solid ground;
+- +1d8 damage on melee weapon attacks;
+- once-per-turn bonus damage equal to Proficiency Bonus;
+- +2 additional AC while **Aegis of the Five** is active.
+
+The sheet also adds:
+
+- **Winged Breakthrough**, usable once during each transformation;
+- **Aegis of the Five**, with an on/off control and automatic AC calculation;
+- a Proficiency-Bonus round counter;
+- a Next Round button that clears Aegis and reduces the duration;
+- an early-end button;
+- automatic suspension of Formation Stances and detached-Trooper controls;
+- male and female Mega Unison artwork selected from the cohort appearance field;
+- Mega Unison data in JSON and TaleSpire-oriented exports.
+
+A Long Rest restores the once-per-rest Mega Unison use. Heroic Inspiration remains a separately tracked resource and can be awarded with its checkbox.
+
+## Other features
+
+- Female and male artwork for Phalanx, Shield Wall, Spearhead, Assault Rank and Escort Formation.
+- Dynamic Fighter and Cohort Commander level progression.
+- Command Dice, stance modifiers and detached-Trooper statistics.
+- Five individually named and equipped Troopers.
+- Local browser saving.
+- Standard JSON import/export.
+- Print / Save as PDF workflow.
+- TaleSpire-oriented JSON export.
 
 ## Repository structure
 
@@ -49,55 +78,10 @@ Under **Build variables and secrets**, add:
 SKIP_DEPENDENCY_INSTALL=true
 ```
 
-The project also works without that variable because it contains no package manifest, but the variable prevents Cloudflare from attempting an automatic install if its detection changes.
+The Worker name must remain `rankling-cohort-sheet`.
 
-The Worker name in Cloudflare must be:
+## Updating the GitHub repository
 
-```text
-rankling-cohort-sheet
-```
+Delete any old repository contents that are no longer present in this ZIP, then upload the extracted contents to the repository root. Do not upload only the ZIP file.
 
-That must match the `name` in `wrangler.jsonc`. The configuration also enables the public `workers.dev` route.
-
-## Replacing an older repository version
-
-Delete these old files from GitHub if they still exist:
-
-```text
-package.json
-package-lock.json
-```
-
-Then upload the extracted contents of this ZIP to the repository root and commit the changes.
-
-## Local preview
-
-```bash
-npx --yes wrangler@4.110.0 dev
-```
-
-## Deployment test
-
-```bash
-npx --yes wrangler@4.110.0 deploy --dry-run
-```
-
-## Main features
-
-- Editable Fighter/Rankling character details
-- Automatic ability modifiers, proficiency bonus, saves and skills
-- Level-derived Fighter HP, Hit Dice, attacks and Battle Master summary
-- Shared Formation HP divided into six visible vitality chunks
-- Compact Overview cards for all five troopers
-- Four switchable formation stances
-- Five individually tracked troopers
-- One-detached-trooper limit
-- Personal HP, AC, temporary leader and orders for detached troopers
-- Dedicated species/class/custom Features tab
-- Integrated dice roller
-- Automatic browser saving
-- JSON export/import
-- Print layout
-- Offline/PWA support
-
-Character data is stored in the current browser with `localStorage`.
+There should be no `package.json` or `package-lock.json`.
