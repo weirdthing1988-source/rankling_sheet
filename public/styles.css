@@ -353,3 +353,39 @@ input:disabled, select:disabled { opacity:.68; cursor:not-allowed; background:#1
 @media print {
   .artwork-state-panel { display:none!important; }
 }
+
+/* v1.9 Mega Unison */
+.mega-panel { padding:24px; }
+.mega-unison-panel { display:grid; grid-template-columns:minmax(240px,.7fr) minmax(0,1.3fr); gap:16px; }
+.mega-control-card, .mega-benefits-card { border:1px solid var(--line); background:#14110d; border-radius:15px; padding:16px; }
+.mega-control-card.active { border-color:var(--gold); box-shadow:inset 0 0 0 1px rgba(215,169,72,.25); }
+.mega-resource-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px solid rgba(77,63,46,.65); }
+.mega-resource-row:last-child { border-bottom:0; }
+.mega-resource-row strong { color:var(--gold-bright); }
+.mega-resource-row .check-line { color:var(--ink); }
+.mega-button-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+.mega-button-row button { flex:1 1 150px; }
+.mega-activate { background:linear-gradient(135deg,var(--gold-bright),var(--gold)); color:#17110b; font-weight:900; }
+.mega-end { background:rgba(166,51,43,.18); border-color:rgba(216,90,77,.48); }
+.mega-rounds { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:12px 0; }
+.mega-rounds div { padding:10px; border:1px solid var(--line); border-radius:11px; text-align:center; }
+.mega-rounds span { display:block; color:var(--muted); font-size:.68rem; text-transform:uppercase; letter-spacing:.07em; }
+.mega-rounds strong { display:block; margin-top:5px; font:700 1.35rem Georgia,serif; color:var(--gold-bright); }
+.mega-benefit-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin:0; padding:0; list-style:none; }
+.mega-benefit-list li { border:1px solid var(--line); border-radius:11px; padding:10px; color:var(--muted); line-height:1.4; }
+.mega-benefit-list strong { color:var(--ink); }
+.mega-warning { margin:12px 0 0; color:var(--red-bright); font-size:.8rem; line-height:1.45; }
+.mega-note { margin:12px 0 0; color:var(--muted); font-size:.82rem; line-height:1.5; }
+.mega-active-glow { box-shadow:0 0 0 1px rgba(240,203,115,.25),0 0 32px rgba(215,169,72,.16); }
+.action-card.mega-offense { border-color:rgba(216,90,77,.62); background:linear-gradient(145deg,rgba(166,51,43,.18),#14110d); }
+.action-card.mega-defense { border-color:rgba(109,152,181,.72); background:linear-gradient(145deg,rgba(109,152,181,.16),#14110d); }
+@media (max-width:900px) {
+  .mega-unison-panel { grid-template-columns:1fr; }
+}
+@media (max-width:720px) {
+  .mega-panel { padding:16px; }
+  .mega-benefit-list { grid-template-columns:1fr; }
+}
+@media print {
+  .mega-button-row { display:none!important; }
+}
