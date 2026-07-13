@@ -1,8 +1,20 @@
-# Rankling Cohort Sheet — Cloudflare Workers Static Assets
+# Rankling Cohort Sheet v1.2 — Cloudflare Workers Static Assets
 
 A static D&D character sheet for one Brass commander and five formation troopers.
 
-This edition deliberately contains **no `package.json` and no lockfile**. That prevents Cloudflare Workers Builds from running `npm clean-install`, which can stall or fail with the npm error `Exit handler never called!`.
+This edition contains **no `package.json` and no lockfile**. That prevents Cloudflare Workers Builds from running `npm clean-install`, which previously stalled with the npm error `Exit handler never called!`.
+
+## What changed in v1.2
+
+- Added a dedicated **Features** tab.
+- Moved Cohort Bond/species benefits off the Overview tab.
+- Added a dynamic Fighter progression panel and level-derived combat summary.
+- Added a compact five-trooper row to Overview.
+- Each formed trooper now displays one of the shared Formation HP chunks; the Brass retains the sixth chunk.
+- Level and Constitution can automatically update maximum HP using Fighter average HP.
+- Level automatically updates proficiency bonus, Hit Dice, attacks per Attack action, Formation save DC, superiority dice, and detached-trooper HP/AC.
+- Added an automatic-level-stat toggle and a Bonus Maximum HP field for feats or campaign bonuses.
+- Existing browser saves remain compatible.
 
 ## Repository structure
 
@@ -15,9 +27,9 @@ public/
   manifest.webmanifest
   service-worker.js
   styles.css
-.gitignore
 LICENSE
 README.md
+UPLOAD_CHECKLIST.txt
 wrangler.jsonc
 ```
 
@@ -45,24 +57,20 @@ The Worker name in Cloudflare must be:
 rankling-cohort-sheet
 ```
 
-That must match the `name` in `wrangler.jsonc`.
+That must match the `name` in `wrangler.jsonc`. The configuration also enables the public `workers.dev` route.
 
-## Important when replacing the previous repository version
+## Replacing an older repository version
 
-Delete these two old files from GitHub rather than merely copying the new files over them:
+Delete these old files from GitHub if they still exist:
 
 ```text
 package.json
 package-lock.json
 ```
 
-If either file remains in the repository, Cloudflare may run `npm clean-install` again.
+Then upload the extracted contents of this ZIP to the repository root and commit the changes.
 
-Commit the deletions and push them with the rest of this version.
-
-## Local preview without installing dependencies
-
-From the repository root:
+## Local preview
 
 ```bash
 npx --yes wrangler@4.110.0 dev
@@ -74,15 +82,18 @@ npx --yes wrangler@4.110.0 dev
 npx --yes wrangler@4.110.0 deploy --dry-run
 ```
 
-## Included features
+## Main features
 
 - Editable Fighter/Rankling character details
 - Automatic ability modifiers, proficiency bonus, saves and skills
-- Shared Formation HP and temporary HP
+- Level-derived Fighter HP, Hit Dice, attacks and Battle Master summary
+- Shared Formation HP divided into six visible vitality chunks
+- Compact Overview cards for all five troopers
 - Four switchable formation stances
 - Five individually tracked troopers
 - One-detached-trooper limit
 - Personal HP, AC, temporary leader and orders for detached troopers
+- Dedicated species/class/custom Features tab
 - Integrated dice roller
 - Automatic browser saving
 - JSON export/import

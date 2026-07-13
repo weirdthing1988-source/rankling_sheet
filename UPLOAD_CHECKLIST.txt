@@ -9,5 +9,6 @@ UPLOAD_CHECKLIST.txt
 Do not upload the ZIP itself as the only repository file. Extract it first.
 There should be no package.json or package-lock.json in this no-install edition.
 
-Cloudflare deploy command:
-npx --yes wrangler@4.110.0 deploy
+Cloudflare build command: leave blank
+Cloudflare deploy command: npx --yes wrangler@4.110.0 deploy
+Cloudflare variable: SKIP_DEPENDENCY_INSTALL=true

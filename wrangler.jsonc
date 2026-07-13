@@ -1,6 +1,7 @@
 {
   "name": "rankling-cohort-sheet",
   "compatibility_date": "2026-07-12",
+  "workers_dev": true,
   "assets": {
     "directory": "./public"
   }
