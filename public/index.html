@@ -45,8 +45,36 @@
           </div>
           <p class="hero-note">The Brass is the thinking character. The five troopers act through its commands, stances and attacks rather than receiving six separate turns.</p>
         </div>
-        <figure class="hero-art">
-          <img src="assets/cohort-lineup.png" alt="A Brass leader and five small fae troopers marching in formation">
+        <figure class="hero-art" id="heroArt">
+          <img id="heroImage" src="assets/cohort-lineup.png" alt="A Brass leader and five small fae troopers marching in formation">
+          <button class="image-edit-trigger" id="editArtworkBtn" type="button" aria-expanded="false" aria-controls="artworkEditor">Edit artwork</button>
+          <div class="artwork-editor" id="artworkEditor" hidden>
+            <div class="artwork-editor-head">
+              <strong>Sheet artwork</strong>
+              <button class="artwork-close" id="closeArtworkEditor" type="button" aria-label="Close artwork editor">×</button>
+            </div>
+            <div class="artwork-actions">
+              <label class="ghost-button file-button artwork-upload">Replace image<input id="artworkFile" type="file" accept="image/*"></label>
+              <button class="ghost-button" id="restoreArtworkBtn" type="button">Restore default</button>
+            </div>
+            <label>Display mode
+              <select id="artworkFit">
+                <option value="cover">Fill frame</option>
+                <option value="contain">Show whole image</option>
+              </select>
+            </label>
+            <label>Zoom <output id="artworkZoomValue">100%</output>
+              <input id="artworkZoom" type="range" min="50" max="200" step="1" value="100">
+            </label>
+            <label>Horizontal position <output id="artworkXValue">50%</output>
+              <input id="artworkX" type="range" min="0" max="100" step="1" value="50">
+            </label>
+            <label>Vertical position <output id="artworkYValue">50%</output>
+              <input id="artworkY" type="range" min="0" max="100" step="1" value="50">
+            </label>
+            <button class="ghost-button artwork-reset-frame" id="resetArtworkFrameBtn" type="button">Reset framing</button>
+            <small>Custom artwork is resized before being stored locally and is included in JSON exports.</small>
+          </div>
         </figure>
       </section>
 

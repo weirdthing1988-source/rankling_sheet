@@ -1,7 +1,7 @@
 'use strict';
 
 const STORAGE_KEY = 'rankling-cohort-sheet-v1';
-const CURRENT_VERSION = 3;
+const CURRENT_VERSION = 4;
 const abilities = ['str','dex','con','int','wis','cha'];
 const abilityNames = {str:'Strength',dex:'Dexterity',con:'Constitution',int:'Intelligence',wis:'Wisdom',cha:'Charisma'};
 const skills = [
@@ -73,7 +73,8 @@ function defaultState() {
       skills:{'Athletics':1,'History':1,'Investigation':1,'Perception':1},
       equipment:"Leader's short spear and red-ring command shield\nFive short simple weapons and five round shields\nMatching bronze helmets and light formation armour\nBanner ribbons, field rations and repair kit",
       notes:'The Brass is the only fully self-directing member of the cohort. Each Trooper has a distinct personality but depends on recognised leadership for purposeful action.',
-      customFeatures:'',sessionLog:''
+      customFeatures:'',sessionLog:'',
+      artwork:{dataUrl:'',fit:'cover',zoom:100,x:50,y:50}
     },
     formation:{stance:'shield',secondaryStance:'',ward:'',linkDetachedDamage:true},
     resources:{commandDiceCurrent:4,commandDiceMax:4,commandDie:6,lastStandAvailable:true},
@@ -117,6 +118,12 @@ function normaliseState(candidate) {
   candidate.rollHistory=Array.isArray(candidate.rollHistory)?candidate.rollHistory:[];
   if(previousVersion<CURRENT_VERSION&&candidate.character.subclass==='Battle Master') candidate.character.subclass='Cohort Commander';
   if(!candidate.character.fightingStyle) candidate.character.fightingStyle='Interception';
+  candidate.character.artwork={...defaults.character.artwork,...(candidate.character.artwork||{})};
+  candidate.character.artwork.fit=['cover','contain'].includes(candidate.character.artwork.fit)?candidate.character.artwork.fit:'cover';
+  candidate.character.artwork.zoom=clamp(candidate.character.artwork.zoom??100,50,200);
+  candidate.character.artwork.x=clamp(candidate.character.artwork.x??50,0,100);
+  candidate.character.artwork.y=clamp(candidate.character.artwork.y??50,0,100);
+  if(typeof candidate.character.artwork.dataUrl!=='string') candidate.character.artwork.dataUrl='';
   if(candidate.formation.secondaryStance===undefined) candidate.formation.secondaryStance='';
   if(candidate.formation.ward===undefined) candidate.formation.ward='';
   const oldTroopers=Array.isArray(candidate.troopers)?candidate.troopers:[];
@@ -232,8 +239,8 @@ function syncDerivedStats({preserveDamage=true}={}) {
 }
 
 function scheduleSave(){
-  document.getElementById('saveStatus').textContent='Saving…';clearTimeout(saveTimer);
-  saveTimer=setTimeout(()=>{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));document.getElementById('saveStatus').textContent='Saved locally';},180);
+  const status=document.getElementById('saveStatus');status.textContent='Saving…';clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));status.textContent='Saved locally';}catch(err){console.warn('Could not save sheet',err);status.textContent='Not saved';showToast('The sheet could not be saved locally. Try a smaller artwork image.');}},180);
 }
 function showToast(message){const toast=document.getElementById('toast');toast.textContent=message;toast.classList.add('show');clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>toast.classList.remove('show'),2400);}
 function escapeHtml(value){return String(value).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
@@ -253,6 +260,51 @@ function bindInputs(){
   });
 }
 function syncBoundInputs(){document.querySelectorAll('.data-input[data-path]').forEach(input=>{if(document.activeElement===input)return;const value=getPath(state,input.dataset.path);if(input.type==='checkbox')input.checked=Boolean(value);else input.value=value??'';});}
+
+function renderArtwork(){
+  const art=state.character.artwork||defaultState().character.artwork;
+  const image=document.getElementById('heroImage');if(!image)return;
+  image.src=art.dataUrl||'assets/cohort-lineup.png';
+  image.style.objectFit=art.fit;
+  image.style.objectPosition=`${art.x}% ${art.y}%`;
+  image.style.transform=`scale(${art.zoom/100})`;
+  image.style.transformOrigin=`${art.x}% ${art.y}%`;
+  const fit=document.getElementById('artworkFit'),zoom=document.getElementById('artworkZoom'),x=document.getElementById('artworkX'),y=document.getElementById('artworkY');
+  if(fit)fit.value=art.fit;if(zoom)zoom.value=art.zoom;if(x)x.value=art.x;if(y)y.value=art.y;
+  const zv=document.getElementById('artworkZoomValue'),xv=document.getElementById('artworkXValue'),yv=document.getElementById('artworkYValue');
+  if(zv)zv.textContent=`${art.zoom}%`;if(xv)xv.textContent=`${art.x}%`;if(yv)yv.textContent=`${art.y}%`;
+}
+function setArtworkEditorOpen(open){
+  const panel=document.getElementById('artworkEditor'),button=document.getElementById('editArtworkBtn');if(!panel||!button)return;
+  panel.hidden=!open;button.setAttribute('aria-expanded',String(open));button.textContent=open?'Editing artwork':'Edit artwork';
+}
+function loadImageElement(source){return new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('That image could not be read.'));image.src=source;});}
+function readFileDataUrl(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(new Error('That image could not be read.'));reader.readAsDataURL(file);});}
+function drawOptimisedArtwork(image,maxDimension,quality){
+  const scale=Math.min(1,maxDimension/Math.max(image.naturalWidth||image.width,image.naturalHeight||image.height));
+  const width=Math.max(1,Math.round((image.naturalWidth||image.width)*scale)),height=Math.max(1,Math.round((image.naturalHeight||image.height)*scale));
+  const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0,width,height);
+  return canvas.toDataURL('image/webp',quality);
+}
+async function optimiseArtwork(file){
+  if(!file.type.startsWith('image/'))throw new Error('Choose an image file.');
+  if(file.size>20*1024*1024)throw new Error('That image is too large. Choose one under 20 MB.');
+  const source=await readFileDataUrl(file),image=await loadImageElement(source);
+  let result=drawOptimisedArtwork(image,1800,.86);
+  if(result.length>2600000)result=drawOptimisedArtwork(image,1200,.76);
+  return result;
+}
+function setupArtworkEditor(){
+  const edit=document.getElementById('editArtworkBtn'),close=document.getElementById('closeArtworkEditor'),file=document.getElementById('artworkFile');
+  edit.addEventListener('click',()=>setArtworkEditorOpen(document.getElementById('artworkEditor').hidden));
+  close.addEventListener('click',()=>setArtworkEditorOpen(false));
+  file.addEventListener('change',async event=>{const chosen=event.target.files?.[0];if(!chosen)return;try{edit.disabled=true;edit.textContent='Processing…';state.character.artwork.dataUrl=await optimiseArtwork(chosen);state.character.artwork.fit='cover';state.character.artwork.zoom=100;state.character.artwork.x=50;state.character.artwork.y=50;renderArtwork();scheduleSave();showToast('Artwork updated.');}catch(err){showToast(err.message||'The artwork could not be loaded.');}finally{edit.disabled=false;edit.textContent='Editing artwork';event.target.value='';}});
+  document.getElementById('artworkFit').addEventListener('change',event=>{state.character.artwork.fit=event.target.value;renderArtwork();scheduleSave();});
+  [['artworkZoom','zoom'],['artworkX','x'],['artworkY','y']].forEach(([id,key])=>document.getElementById(id).addEventListener('input',event=>{state.character.artwork[key]=Number(event.target.value);renderArtwork();scheduleSave();}));
+  document.getElementById('resetArtworkFrameBtn').addEventListener('click',()=>{Object.assign(state.character.artwork,{fit:'cover',zoom:100,x:50,y:50});renderArtwork();scheduleSave();showToast('Artwork framing reset.');});
+  document.getElementById('restoreArtworkBtn').addEventListener('click',()=>{if(!state.character.artwork.dataUrl||confirm('Restore the default cohort artwork?')){Object.assign(state.character.artwork,{dataUrl:'',fit:'cover',zoom:100,x:50,y:50});renderArtwork();scheduleSave();showToast('Default artwork restored.');}});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape')setArtworkEditorOpen(false);});
+}
 
 function renderAbilities(){
   const grid=document.getElementById('abilityGrid');grid.innerHTML='';
@@ -398,7 +450,7 @@ function renderDynamic(){
   const auto=Boolean(state.character.autoLevelStats);document.getElementById('maxHPInput').disabled=auto;document.getElementById('hitDiceMaxInput').disabled=auto;document.getElementById('maxHPHint').textContent=auto?`Fighter average: ${calculatedMaxHP()}`:'manual';
   renderCommandResources();renderOverviewTroopers();renderSpeciesFeatures();renderFighterFeatures();renderActions();
 }
-function renderAll(){renderAbilities();renderChecks();renderStances();renderTroopers();renderDynamic();syncBoundInputs();renderRollHistory();}
+function renderAll(){renderArtwork();renderAbilities();renderChecks();renderStances();renderTroopers();renderDynamic();syncBoundInputs();renderRollHistory();}
 
 function applyFormationDamage(amount){amount=Math.max(0,Number(amount));const absorbed=Math.min(state.character.tempHP,amount);state.character.tempHP-=absorbed;amount-=absorbed;state.character.currentHP=Math.max(0,state.character.currentHP-amount);}
 function healFormation(amount){state.character.currentHP=Math.min(state.character.maxHP,state.character.currentHP+Math.max(0,Number(amount)));}
@@ -427,5 +479,5 @@ function setupControls(){
 }
 function exportState(){const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`${(state.character.name||'rankling-cohort').toLowerCase().replace(/[^a-z0-9]+/g,'-')}.json`;a.click();URL.revokeObjectURL(url);showToast('Character exported.');}
 function importState(event){const file=event.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{state=normaliseState(mergeDeep(defaultState(),JSON.parse(reader.result)));syncDerivedStats();renderAll();scheduleSave();showToast('Character imported.');}catch{showToast('That file is not valid character JSON.');}event.target.value='';};reader.readAsText(file);}
-function init(){state=normaliseState(state);syncDerivedStats();bindInputs();setupTabs();setupDice();setupControls();renderAll();if('serviceWorker' in navigator)navigator.serviceWorker.register('./service-worker.js').catch(()=>{});}
+function init(){state=normaliseState(state);syncDerivedStats();bindInputs();setupTabs();setupDice();setupControls();setupArtworkEditor();renderAll();if('serviceWorker' in navigator)navigator.serviceWorker.register('./service-worker.js').catch(()=>{});}
 document.addEventListener('DOMContentLoaded',init);
