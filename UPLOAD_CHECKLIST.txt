@@ -1,0 +1,13 @@
+UPLOAD THESE ITEMS TO THE ROOT OF YOUR GITHUB REPOSITORY:
+
+public/                 (folder; includes index.html, CSS, JS, artwork and icons)
+LICENSE
+README.md
+wrangler.jsonc
+UPLOAD_CHECKLIST.txt
+
+Do not upload the ZIP itself as the only repository file. Extract it first.
+There should be no package.json or package-lock.json in this no-install edition.
+
+Cloudflare deploy command:
+npx --yes wrangler@4.110.0 deploy
