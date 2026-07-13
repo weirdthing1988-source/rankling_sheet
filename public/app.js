@@ -1,7 +1,7 @@
 'use strict';
 
 const STORAGE_KEY = 'rankling-cohort-sheet-v1';
-const CURRENT_VERSION = 4;
+const CURRENT_VERSION = 5;
 const abilities = ['str','dex','con','int','wis','cha'];
 const abilityNames = {str:'Strength',dex:'Dexterity',con:'Constitution',int:'Intelligence',wis:'Wisdom',cha:'Charisma'};
 const skills = [
@@ -21,6 +21,14 @@ const trooperWeapons = {
 };
 const basicOrders = ['Follow','Slash','Help','Guard','Hold Position','Return'];
 const delegatedOrders = ['Dash','Disengage','Interpose'];
+
+const stanceArtwork = {
+  march:{src:'assets/art-march.png',title:'Formation Marching',caption:'Default overview art. When a primary stance is active, the image switches automatically.',alt:'The Brass leader and five fae troopers marching in formation.'},
+  shield:{src:'assets/art-shield-wall.png',title:'Shield Wall',caption:'Displayed whenever Shield Wall is the current active stance.',alt:'The Rankling cohort in a tight shield wall.'},
+  spearhead:{src:'assets/art-spearhead.png',title:'Spearhead',caption:'Displayed whenever Spearhead is the current active stance.',alt:'The Rankling cohort driving forward in a spearhead charge.'},
+  assault:{src:'assets/art-assault-rank.png',title:'Assault Rank',caption:'Displayed whenever Assault Rank is the current active stance.',alt:'The Rankling cohort charging aggressively in assault formation.'},
+  escort:{src:'assets/art-escort-formation.png',title:'Escort Formation',caption:'Displayed whenever Escort Formation is the current active stance.',alt:'The Rankling cohort protecting a taller ward in escort formation.'}
+};
 
 const speciesFeatures = [
   {name:'Fey Cohort',text:'You are a Fey cohort made of one Brass and five bonded Troopers. The assembled cohort is Medium; an individual Brass or detached Trooper is Small. Your walking speed is 25 feet, and you know Common and Sylvan.'},
@@ -261,52 +269,37 @@ function bindInputs(){
 }
 function syncBoundInputs(){document.querySelectorAll('.data-input[data-path]').forEach(input=>{if(document.activeElement===input)return;const value=getPath(state,input.dataset.path);if(input.type==='checkbox')input.checked=Boolean(value);else input.value=value??'';});}
 
+
+function currentArtworkKey(){
+  return primaryStanceKey() || 'march';
+}
 function renderArtwork(){
-  const art=state.character.artwork||defaultState().character.artwork;
   const image=document.getElementById('heroImage');if(!image)return;
-  image.src=art.dataUrl||'assets/cohort-lineup.png';
-  image.style.objectFit=art.fit;
-  image.style.objectPosition=`${art.x}% ${art.y}%`;
-  image.style.transform=`scale(${art.zoom/100})`;
-  image.style.transformOrigin=`${art.x}% ${art.y}%`;
-  const fit=document.getElementById('artworkFit'),zoom=document.getElementById('artworkZoom'),x=document.getElementById('artworkX'),y=document.getElementById('artworkY');
-  if(fit)fit.value=art.fit;if(zoom)zoom.value=art.zoom;if(x)x.value=art.x;if(y)y.value=art.y;
-  const zv=document.getElementById('artworkZoomValue'),xv=document.getElementById('artworkXValue'),yv=document.getElementById('artworkYValue');
-  if(zv)zv.textContent=`${art.zoom}%`;if(xv)xv.textContent=`${art.x}%`;if(yv)yv.textContent=`${art.y}%`;
+  const key=currentArtworkKey();
+  const art=stanceArtwork[key]||stanceArtwork.march;
+  image.src=art.src;
+  image.alt=art.alt;
+  image.style.objectFit='cover';
+  image.style.objectPosition='center';
+  image.style.transform='scale(1)';
+  image.style.transformOrigin='center';
+  const title=document.getElementById('artworkTitle'),caption=document.getElementById('artworkCaption'),chipRow=document.getElementById('artworkChipRow');
+  if(title)title.textContent=art.title;
+  if(caption)caption.textContent=art.caption;
+  if(chipRow){
+    chipRow.innerHTML=[
+      ['march','Formation marching'],
+      ['shield','Shield Wall'],
+      ['spearhead','Spearhead'],
+      ['assault','Assault Rank'],
+      ['escort','Escort Formation']
+    ].map(([artKey,label])=>`<span class="artwork-chip${artKey===key?' active':''}${artKey!==key && artKey===state.formation.stance && !stanceAvailable(artKey)?' unavailable':''}">${label}</span>`).join('');
+  }
 }
-function setArtworkEditorOpen(open){
-  const panel=document.getElementById('artworkEditor'),button=document.getElementById('editArtworkBtn');if(!panel||!button)return;
-  panel.hidden=!open;button.setAttribute('aria-expanded',String(open));button.textContent=open?'Editing artwork':'Edit artwork';
-}
-function loadImageElement(source){return new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('That image could not be read.'));image.src=source;});}
-function readFileDataUrl(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(new Error('That image could not be read.'));reader.readAsDataURL(file);});}
-function drawOptimisedArtwork(image,maxDimension,quality){
-  const scale=Math.min(1,maxDimension/Math.max(image.naturalWidth||image.width,image.naturalHeight||image.height));
-  const width=Math.max(1,Math.round((image.naturalWidth||image.width)*scale)),height=Math.max(1,Math.round((image.naturalHeight||image.height)*scale));
-  const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0,width,height);
-  return canvas.toDataURL('image/webp',quality);
-}
-async function optimiseArtwork(file){
-  if(!file.type.startsWith('image/'))throw new Error('Choose an image file.');
-  if(file.size>20*1024*1024)throw new Error('That image is too large. Choose one under 20 MB.');
-  const source=await readFileDataUrl(file),image=await loadImageElement(source);
-  let result=drawOptimisedArtwork(image,1800,.86);
-  if(result.length>2600000)result=drawOptimisedArtwork(image,1200,.76);
-  return result;
-}
-function setupArtworkEditor(){
-  const edit=document.getElementById('editArtworkBtn'),close=document.getElementById('closeArtworkEditor'),file=document.getElementById('artworkFile');
-  edit.addEventListener('click',()=>setArtworkEditorOpen(document.getElementById('artworkEditor').hidden));
-  close.addEventListener('click',()=>setArtworkEditorOpen(false));
-  file.addEventListener('change',async event=>{const chosen=event.target.files?.[0];if(!chosen)return;try{edit.disabled=true;edit.textContent='Processing…';state.character.artwork.dataUrl=await optimiseArtwork(chosen);state.character.artwork.fit='cover';state.character.artwork.zoom=100;state.character.artwork.x=50;state.character.artwork.y=50;renderArtwork();scheduleSave();showToast('Artwork updated.');}catch(err){showToast(err.message||'The artwork could not be loaded.');}finally{edit.disabled=false;edit.textContent='Editing artwork';event.target.value='';}});
-  document.getElementById('artworkFit').addEventListener('change',event=>{state.character.artwork.fit=event.target.value;renderArtwork();scheduleSave();});
-  [['artworkZoom','zoom'],['artworkX','x'],['artworkY','y']].forEach(([id,key])=>document.getElementById(id).addEventListener('input',event=>{state.character.artwork[key]=Number(event.target.value);renderArtwork();scheduleSave();}));
-  document.getElementById('resetArtworkFrameBtn').addEventListener('click',()=>{Object.assign(state.character.artwork,{fit:'cover',zoom:100,x:50,y:50});renderArtwork();scheduleSave();showToast('Artwork framing reset.');});
-  document.getElementById('restoreArtworkBtn').addEventListener('click',()=>{if(!state.character.artwork.dataUrl||confirm('Restore the default cohort artwork?')){Object.assign(state.character.artwork,{dataUrl:'',fit:'cover',zoom:100,x:50,y:50});renderArtwork();scheduleSave();showToast('Default artwork restored.');}});
-  document.addEventListener('keydown',event=>{if(event.key==='Escape')setArtworkEditorOpen(false);});
-}
+function setupArtworkEditor(){ return; }
 
 function renderAbilities(){
+
   const grid=document.getElementById('abilityGrid');grid.innerHTML='';
   abilities.forEach(key=>{
     const card=document.createElement('div');card.className='ability-card';
