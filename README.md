@@ -1,6 +1,21 @@
-# Rankling Cohort Sheet v1.9 — Mega Unison
+# Rankling Cohort Sheet v2.0 — Automated Fighting Styles and Level Choices
 
 A static D&D 5e character sheet for one Rankling Brass and five bonded Troopers. It is deployable as a Cloudflare Worker with Static Assets and contains no `package.json` or lockfile.
+
+## Fighting Styles and level-up choices
+
+The Fighting Style selector now changes the sheet mechanically:
+
+- **Defense:** automatically adds +1 AC.
+- **Dueling:** automatically adds +2 damage to the Brass’s one-handed spear attacks, including Mega Unison attacks.
+- **Interception:** adds a reaction card and a `1d10 + Proficiency Bonus` damage-reduction roll.
+- **Protection:** adds the shield reaction to the Actions tab.
+- **Superior Technique:** grants one d6 superiority die per Short or Long Rest and a selectable manoeuvre.
+- **Other:** remains available for a manual custom style.
+
+A new **Fighting Style & Level Choices** section appears in the Features tab. Fighter choice levels 4, 6, 8, 12, 14, 16 and 19 can each be assigned either an Ability Score Improvement or a supported feat.
+
+Supported automated feats include Tough, Alert, Mobile, Resilient, Athlete, Heavy Armor Master, Shield Master, Inspiring Leader, Lucky and Skill Expert. Numerical bonuses, effective abilities, saving throw proficiency, expertise, resources, actions and rest restoration are updated automatically. A Custom / Manual option remains available for other feats.
 
 ## Mega Unison
 
