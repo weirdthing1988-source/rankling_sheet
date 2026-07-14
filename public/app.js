@@ -1,7 +1,7 @@
 'use strict';
 
 const STORAGE_KEY = 'rankling-cohort-sheet-v1';
-const CURRENT_VERSION = 8;
+const CURRENT_VERSION = 9;
 const abilities = ['str','dex','con','int','wis','cha'];
 const abilityNames = {str:'Strength',dex:'Dexterity',con:'Constitution',int:'Intelligence',wis:'Wisdom',cha:'Charisma'};
 const skills = [
@@ -21,6 +21,25 @@ const trooperWeapons = {
 };
 const basicOrders = ['Follow','Slash','Help','Guard','Hold Position','Return'];
 const delegatedOrders = ['Dash','Disengage','Interpose'];
+
+const asiLevels = [4,6,8,12,14,16,19];
+const supportedFeats = {
+  'Tough':{description:'Maximum HP increases by twice your character level.'},
+  'Alert':{description:'Add your Proficiency Bonus to Initiative.'},
+  'Mobile':{description:'Walking speed increases by 10 feet.'},
+  'Resilient':{description:'Increase one chosen ability by 1 and gain proficiency in that saving throw.',abilityChoice:'any'},
+  'Athlete':{description:'Increase Strength or Dexterity by 1. Standing and climbing benefits are listed for reference.',abilityChoice:'strDex'},
+  'Heavy Armor Master':{description:'Increase Strength by 1 and reduce nonmagical physical damage by your Proficiency Bonus.'},
+  'Shield Master':{description:'Adds a shield shove action and defensive reaction reminders.'},
+  'Inspiring Leader':{description:'Once per Short or Long Rest, grant temporary HP equal to level + Charisma modifier.'},
+  'Lucky':{description:'Gain a number of Luck Points equal to your Proficiency Bonus each Long Rest.'},
+  'Skill Expert':{description:'Increase one ability by 1 and gain expertise in one chosen proficient skill.',abilityChoice:'any',skillChoice:true},
+  'Custom / Manual':{description:'Track a custom feat in Additional Features. No automatic numeric changes are applied.'}
+};
+const superiorTechniqueManeuvers = ['Precision Attack','Trip Attack','Pushing Attack','Rally'];
+function defaultLevelChoices(){
+  return Object.fromEntries(asiLevels.map(lvl=>[String(lvl),{type:'none',ability1:'str',ability2:'str',feat:'Tough',featAbility:'str',featSkill:'Athletics'}]));
+}
 
 const stanceArtworkSets = {
   female:{
@@ -61,24 +80,24 @@ const fighterProgression = [
   {level:2,kind:'Fighter',name:'Action Surge',text:'Take one additional action on your turn once per Short or Long Rest.'},
   {level:3,kind:'Cohort Commander',name:'Form Up',text:'Unlock Shield Wall, Spearhead, Assault Rank and Escort Formation. Changing primary stance requires a Bonus Action.'},
   {level:3,kind:'Cohort Commander',name:'Command Dice',text:'Gain four d6 Command Dice, restored on a Short or Long Rest. Formation manoeuvres spend these dice.'},
-  {level:4,kind:'Fighter',name:'Ability Score Improvement',text:'Choose an ability-score increase or feat; this choice is not applied automatically.'},
+  {level:4,kind:'Fighter',name:'Ability Score Improvement',text:'Choose an Ability Score Improvement or supported feat in the Level Choices panel; its effects are applied automatically.'},
   {level:5,kind:'Fighter',name:'Extra Attack',text:'Attack twice whenever you take the Attack action.'},
-  {level:6,kind:'Fighter',name:'Ability Score Improvement',text:'Choose an ability-score increase or feat.'},
+  {level:6,kind:'Fighter',name:'Ability Score Improvement',text:'Choose an Ability Score Improvement or supported feat in the Level Choices panel.'},
   {level:7,kind:'Cohort Commander',name:'Delegated Command',text:'Command Dice increase to five. A Temporary Leader may issue one simple order each round without spending a Bonus Action. Unlock Dash, Disengage and Interpose orders.'},
-  {level:8,kind:'Fighter',name:'Ability Score Improvement',text:'Choose an ability-score increase or feat.'},
+  {level:8,kind:'Fighter',name:'Ability Score Improvement',text:'Choose an Ability Score Improvement or supported feat in the Level Choices panel.'},
   {level:9,kind:'Fighter',name:'Indomitable',text:'Reroll one failed saving throw per Long Rest.'},
   {level:10,kind:'Cohort Commander',name:'Drilled Formations',text:'Command Dice become d8s. Shield Wall loses its speed penalty; Spearhead pushes 10 feet; Assault bonus damage doubles; Escort grants its ward +1 AC.'},
   {level:11,kind:'Fighter',name:'Extra Attack (2)',text:'Attack three times whenever you take the Attack action.'},
-  {level:12,kind:'Fighter',name:'Ability Score Improvement',text:'Choose an ability-score increase or feat.'},
+  {level:12,kind:'Fighter',name:'Ability Score Improvement',text:'Choose an Ability Score Improvement or supported feat in the Level Choices panel.'},
   {level:13,kind:'Fighter',name:'Indomitable (2 uses)',text:'Use Indomitable twice between Long Rests.'},
-  {level:14,kind:'Fighter',name:'Ability Score Improvement',text:'Choose an ability-score increase or feat.'},
+  {level:14,kind:'Fighter',name:'Ability Score Improvement',text:'Choose an Ability Score Improvement or supported feat in the Level Choices panel.'},
   {level:15,kind:'Cohort Commander',name:'Instant Reformation',text:'Command Dice increase to six. Choose a stance when Initiative is rolled, change stance once per turn without a Bonus Action, and recall a detached Trooper as an emergency reaction.'},
   {level:15,kind:'Cohort Commander',name:'Mega Unison',text:'Spend Heroic Inspiration to fuse the Brass and all five formed Troopers for a number of rounds equal to your Proficiency Bonus. The fused form gains flight, enhanced offence and Aegis of the Five, but cannot use formation stances or detached Troopers.'},
-  {level:16,kind:'Fighter',name:'Ability Score Improvement',text:'Choose an ability-score increase or feat.'},
+  {level:16,kind:'Fighter',name:'Ability Score Improvement',text:'Choose an Ability Score Improvement or supported feat in the Level Choices panel.'},
   {level:17,kind:'Fighter',name:'Action Surge (2 uses)',text:'Use Action Surge twice between rests, but only once on a turn.'},
   {level:17,kind:'Fighter',name:'Indomitable (3 uses)',text:'Use Indomitable three times between Long Rests.'},
   {level:18,kind:'Cohort Commander',name:'Perfect Formation',text:'Command Dice become d10s. Maintain one primary stance and one secondary lesser benefit. Regain one Command Die on Initiative if empty. Once per Long Rest, a formed Trooper may become Downed to leave the cohort at 1 HP instead of 0.'},
-  {level:19,kind:'Fighter',name:'Ability Score Improvement',text:'Choose an ability-score increase or feat.'},
+  {level:19,kind:'Fighter',name:'Ability Score Improvement',text:'Choose an Ability Score Improvement or supported feat in the Level Choices panel.'},
   {level:20,kind:'Fighter',name:'Extra Attack (3)',text:'Attack four times whenever you take the Attack action.'}
 ];
 
@@ -89,18 +108,18 @@ function defaultState() {
   return {
     version: CURRENT_VERSION,
     character: {
-      name:'The Copper Rank',player:'',species:'Rankling',className:'Fighter',subclass:'Cohort Commander',fightingStyle:'Interception',background:'Soldier',artGender:'female',level:3,
+      name:'The Copper Rank',player:'',species:'Rankling',className:'Fighter',subclass:'Cohort Commander',fightingStyle:'Interception',superiorTechniqueManeuver:'Precision Attack',background:'Soldier',artGender:'female',level:3,
       baseAC:16,baseSpeed:25,currentHP:28,maxHP:28,bonusHP:0,tempHP:0,hitDiceRemaining:3,hitDiceMax:3,
       autoLevelStats:true,heroicInspiration:true,initiativeBonus:0,abilities:{str:16,dex:12,con:14,int:14,wis:10,cha:8},
       saves:{str:true,dex:false,con:true,int:false,wis:false,cha:false},
       skills:{'Athletics':1,'History':1,'Investigation':1,'Perception':1},
       equipment:"Leader's short spear and red-ring command shield\nFive short simple weapons and five round shields\nMatching bronze helmets and light formation armour\nBanner ribbons, field rations and repair kit",
       notes:'The Brass is the only fully self-directing member of the cohort. Each Trooper has a distinct personality but depends on recognised leadership for purposeful action.',
-      customFeatures:'',sessionLog:'',
+      customFeatures:'',sessionLog:'',levelChoices:defaultLevelChoices(),
       artwork:{dataUrl:'',fit:'cover',zoom:100,x:50,y:50}
     },
     formation:{stance:'',secondaryStance:'',ward:'',linkDetachedDamage:true},
-    resources:{commandDiceCurrent:4,commandDiceMax:4,commandDie:6,lastStandAvailable:true,megaUsedThisLongRest:false},
+    resources:{commandDiceCurrent:4,commandDiceMax:4,commandDie:6,lastStandAvailable:true,megaUsedThisLongRest:false,superiorTechniqueCurrent:1,luckyCurrent:0,inspiringLeaderAvailable:true},
     mega:{active:false,roundsRemaining:0,previousStance:'',breakthroughAvailable:true,aegisActive:false},
     troopers:[
       defaultTrooper(1,'Pip','Chestnut'),defaultTrooper(2,'Tansy','Cocoa'),defaultTrooper(3,'Nell','Rose'),
@@ -150,6 +169,21 @@ function normaliseState(candidate) {
   candidate.rollHistory=Array.isArray(candidate.rollHistory)?candidate.rollHistory:[];
   if(previousVersion<CURRENT_VERSION&&candidate.character.subclass==='Battle Master') candidate.character.subclass='Cohort Commander';
   if(!candidate.character.fightingStyle) candidate.character.fightingStyle='Interception';
+  if(!superiorTechniqueManeuvers.includes(candidate.character.superiorTechniqueManeuver)) candidate.character.superiorTechniqueManeuver='Precision Attack';
+  candidate.character.levelChoices={...defaultLevelChoices(),...(candidate.character.levelChoices||{})};
+  for(const lvl of asiLevels){
+    const key=String(lvl),base=defaultLevelChoices()[key],choice={...base,...(candidate.character.levelChoices[key]||{})};
+    if(!['none','asi','feat'].includes(choice.type))choice.type='none';
+    if(!abilities.includes(choice.ability1))choice.ability1='str';
+    if(!abilities.includes(choice.ability2))choice.ability2='str';
+    if(!supportedFeats[choice.feat])choice.feat='Tough';
+    if(!abilities.includes(choice.featAbility))choice.featAbility='str';
+    if(!skills.some(([name])=>name===choice.featSkill))choice.featSkill='Athletics';
+    candidate.character.levelChoices[key]=choice;
+  }
+  candidate.resources.superiorTechniqueCurrent=clamp(candidate.resources.superiorTechniqueCurrent??1,0,1);
+  candidate.resources.luckyCurrent=Math.max(0,Math.trunc(Number(candidate.resources.luckyCurrent)||0));
+  candidate.resources.inspiringLeaderAvailable=candidate.resources.inspiringLeaderAvailable!==false;
   if(!['female','male'].includes(candidate.character.artGender)) candidate.character.artGender='female';
   candidate.character.artwork={...defaults.character.artwork,...(candidate.character.artwork||{})};
   candidate.character.artwork.fit=['cover','contain'].includes(candidate.character.artwork.fit)?candidate.character.artwork.fit:'cover';
@@ -175,12 +209,47 @@ function mod(score){return Math.floor((Number(score)-10)/2);}
 function level(){return clamp(Math.trunc(state.character.level||1),1,20);}
 function prof(){return 2+Math.floor((level()-1)/4);}
 function fmt(n){return Number(n)>=0?`+${Number(n)}`:String(Number(n));}
+function unlockedLevelChoices(){
+  return asiLevels.filter(lvl=>level()>=lvl).map(lvl=>({level:lvl,...state.character.levelChoices[String(lvl)]}));
+}
+function hasFeat(name){return unlockedLevelChoices().some(choice=>choice.type==='feat'&&choice.feat===name);}
+function abilityChoiceBonuses(){
+  const totals=Object.fromEntries(abilities.map(key=>[key,0]));
+  unlockedLevelChoices().forEach(choice=>{
+    if(choice.type==='asi'){
+      totals[choice.ability1]=(totals[choice.ability1]||0)+1;
+      totals[choice.ability2]=(totals[choice.ability2]||0)+1;
+    }else if(choice.type==='feat'){
+      if(choice.feat==='Resilient'||choice.feat==='Skill Expert')totals[choice.featAbility]=(totals[choice.featAbility]||0)+1;
+      if(choice.feat==='Athlete'){
+        const key=['str','dex'].includes(choice.featAbility)?choice.featAbility:'str';totals[key]=(totals[key]||0)+1;
+      }
+      if(choice.feat==='Heavy Armor Master')totals.str+=1;
+    }
+  });
+  return totals;
+}
+function effectiveAbility(key){return clamp(Number(state.character.abilities[key]||10)+(abilityChoiceBonuses()[key]||0),1,30);}
+function effectiveMod(key){return mod(effectiveAbility(key));}
+function effectiveSaveProficient(key){return Boolean(state.character.saves[key]||unlockedLevelChoices().some(c=>c.type==='feat'&&c.feat==='Resilient'&&c.featAbility===key));}
+function effectiveSkillRank(name){
+  let rank=Number(state.character.skills[name]||0);
+  if(unlockedLevelChoices().some(c=>c.type==='feat'&&c.feat==='Skill Expert'&&c.featSkill===name))rank=Math.max(rank,2);
+  return rank;
+}
+function fightingStyleACBonus(){return state.character.fightingStyle==='Defense'?1:0;}
+function duelingDamageBonus(){return state.character.fightingStyle==='Dueling'?2:0;}
+function featSpeedBonus(){return hasFeat('Mobile')?10:0;}
+function featInitiativeBonus(){return hasFeat('Alert')?prof():0;}
+function toughHPBonus(){return hasFeat('Tough')?2*level():0;}
+function inspiringLeaderTempHP(){return Math.max(1,level()+Math.max(0,effectiveMod('cha')));}
+function luckyMax(){return hasFeat('Lucky')?prof():0;}
 function formedCount(){return state.troopers.filter(t=>t.status==='formed').length;}
 function fighterAttacks(){return level()>=20?4:level()>=11?3:level()>=5?2:1;}
-function formationSaveDC(){return 8+prof()+mod(state.character.abilities.str);}
+function formationSaveDC(){return 8+prof()+effectiveMod('str');}
 function detachedTrooperMaxHP(){return 3+level();}
 function detachedTrooperAC(){return 12+prof();}
-function calculatedMaxHP(){const con=mod(state.character.abilities.con);return Math.max(1,10+con+Math.max(0,level()-1)*Math.max(1,6+con)+Number(state.character.bonusHP||0));}
+function calculatedMaxHP(){const con=effectiveMod('con');return Math.max(1,10+con+Math.max(0,level()-1)*Math.max(1,6+con)+Number(state.character.bonusHP||0)+toughHPBonus());}
 function commandDiceProfile(lvl=level()) {
   if(lvl<3) return {max:0,die:0,label:'Locked'};
   const max=lvl>=15?6:lvl>=7?5:4;
@@ -242,7 +311,7 @@ function useWingedBreakthrough(){
   if(!megaActive())return showToast('Mega Unison is not active.');
   if(!state.mega.breakthroughAvailable)return showToast('Winged Breakthrough has already been used during this Mega Unison.');
   state.mega.breakthroughAvailable=false;
-  rollAndDisplay(`1d20${fmt(mod(state.character.abilities.str)+prof())}`,'Winged Breakthrough attack');
+  rollAndDisplay(`1d20${fmt(effectiveMod('str')+prof())}`,'Winged Breakthrough attack');
   renderAll();scheduleSave();showToast('Winged Breakthrough used. Roll its damage buttons on the action card.');
 }
 
@@ -300,6 +369,9 @@ function syncDerivedStats({preserveDamage=true}={}) {
   state.resources.commandDiceMax=profile.max;
   state.resources.commandDie=profile.die;
   state.resources.commandDiceCurrent=clamp(profile.max-spent,0,profile.max);
+  state.resources.superiorTechniqueCurrent=state.character.fightingStyle==='Superior Technique'?clamp(state.resources.superiorTechniqueCurrent??1,0,1):1;
+  const nextLuckyMax=luckyMax();
+  state.resources.luckyCurrent=clamp(state.resources.luckyCurrent??nextLuckyMax,0,nextLuckyMax);
   if(level()<18) state.resources.lastStandAvailable=true;
 
   if(!state.character.autoLevelStats) {
@@ -337,7 +409,7 @@ function escapeHtml(value){return String(value).replace(/[&<>'"]/g,c=>({'&':'&am
 
 function handleBoundInput(input){
   const path=input.dataset.path;let next=input.type==='checkbox'?input.checked:input.value;if(input.type==='number')next=Number(next);setPath(state,path,next);
-  if(['character.level','character.bonusHP','character.autoLevelStats'].includes(path)) syncDerivedStats();
+  if(['character.level','character.bonusHP','character.autoLevelStats','character.fightingStyle'].includes(path)) syncDerivedStats();
   if(path==='character.currentHP') state.character.currentHP=clamp(state.character.currentHP,0,state.character.maxHP);
   if(path==='character.maxHP'&&!state.character.autoLevelStats) syncDerivedStats({preserveDamage:false});
   renderAll();scheduleSave();
@@ -376,15 +448,15 @@ function renderAbilities(){
   const grid=document.getElementById('abilityGrid');grid.innerHTML='';
   abilities.forEach(key=>{
     const card=document.createElement('div');card.className='ability-card';
-    card.innerHTML=`<label>${abilityNames[key]}<input type="number" min="1" max="30" value="${state.character.abilities[key]}" data-ability="${key}"></label><button class="ability-mod" type="button" title="Roll ${abilityNames[key]} check">${fmt(mod(state.character.abilities[key]))}</button>`;
-    card.querySelector('input').addEventListener('input',e=>{state.character.abilities[key]=Number(e.target.value);if(key==='con')syncDerivedStats();card.querySelector('button').textContent=fmt(mod(state.character.abilities[key]));renderChecks();if(key==='con')renderTroopers();renderDynamic();syncBoundInputs();scheduleSave();});
-    card.querySelector('button').addEventListener('click',()=>rollAndDisplay(`1d20${fmt(mod(state.character.abilities[key]))}`,`${abilityNames[key]} check`));grid.appendChild(card);
+    card.innerHTML=`<label>${abilityNames[key]}<input type="number" min="1" max="30" value="${state.character.abilities[key]}" data-ability="${key}"><small class="effective-score">Effective ${effectiveAbility(key)}</small></label><button class="ability-mod" type="button" title="Roll ${abilityNames[key]} check">${fmt(effectiveMod(key))}</button>`;
+    card.querySelector('input').addEventListener('change',e=>{state.character.abilities[key]=Number(e.target.value);syncDerivedStats();renderAll();scheduleSave();});
+    card.querySelector('button').addEventListener('click',()=>rollAndDisplay(`1d20${fmt(effectiveMod(key))}`,`${abilityNames[key]} check`));grid.appendChild(card);
   });
 }
 function renderChecks(){
   const savesEl=document.getElementById('saveList'),skillEl=document.getElementById('skillList');savesEl.innerHTML='';skillEl.innerHTML='';
-  abilities.forEach(key=>{const bonus=mod(state.character.abilities[key])+(state.character.saves[key]?prof():0),row=document.createElement('div');row.className='check-row';row.innerHTML=`<input type="checkbox" ${state.character.saves[key]?'checked':''} aria-label="${abilityNames[key]} save proficiency"><span>${abilityNames[key]} <small>(${key.toUpperCase()})</small></span><button type="button">${fmt(bonus)}</button>`;row.querySelector('input').addEventListener('change',e=>{state.character.saves[key]=e.target.checked;renderChecks();scheduleSave();});row.querySelector('button').addEventListener('click',()=>rollAndDisplay(`1d20${fmt(bonus)}`,`${abilityNames[key]} saving throw`));savesEl.appendChild(row);});
-  skills.forEach(([name,key])=>{const rank=Number(state.character.skills[name]||0),bonus=mod(state.character.abilities[key])+prof()*rank,row=document.createElement('div');row.className='check-row';row.innerHTML=`<input type="checkbox" ${rank?'checked':''} aria-label="${name} proficiency"><span>${name} <small>${key.toUpperCase()}</small></span><button type="button">${fmt(bonus)}</button>`;row.querySelector('input').addEventListener('change',e=>{state.character.skills[name]=e.target.checked?1:0;renderChecks();renderDynamic();scheduleSave();});row.querySelector('button').addEventListener('click',()=>rollAndDisplay(`1d20${fmt(bonus)}`,name));skillEl.appendChild(row);});
+  abilities.forEach(key=>{const bonus=effectiveMod(key)+(effectiveSaveProficient(key)?prof():0),row=document.createElement('div');row.className='check-row';row.innerHTML=`<input type="checkbox" ${effectiveSaveProficient(key)?'checked':''} aria-label="${abilityNames[key]} save proficiency"><span>${abilityNames[key]} <small>(${key.toUpperCase()})</small></span><button type="button">${fmt(bonus)}</button>`;row.querySelector('input').addEventListener('change',e=>{state.character.saves[key]=e.target.checked;renderChecks();scheduleSave();});row.querySelector('button').addEventListener('click',()=>rollAndDisplay(`1d20${fmt(bonus)}`,`${abilityNames[key]} saving throw`));savesEl.appendChild(row);});
+  skills.forEach(([name,key])=>{const rank=effectiveSkillRank(name),bonus=effectiveMod(key)+prof()*rank,row=document.createElement('div');row.className='check-row';row.innerHTML=`<input type="checkbox" ${rank?'checked':''} aria-label="${name} proficiency"><span>${name} <small>${key.toUpperCase()}</small></span><button type="button">${fmt(bonus)}</button>`;row.querySelector('input').addEventListener('change',e=>{state.character.skills[name]=e.target.checked?1:0;renderChecks();renderDynamic();scheduleSave();});row.querySelector('button').addEventListener('click',()=>rollAndDisplay(`1d20${fmt(bonus)}`,name));skillEl.appendChild(row);});
 }
 
 function renderCommandResources(){
@@ -482,7 +554,7 @@ function renderTroopers(){
       <div class="trooper-hp"><label>${personal?'Personal':'Shared'} HP<input type="number" min="0" value="${displayCurrent}" data-field="currentHP" ${personal?'':'disabled'}></label><span>/</span><label>Max<input type="number" min="1" value="${displayMax}" data-field="maxHP" ${personal&&!state.character.autoLevelStats?'':'disabled'}></label></div>
       <label>AC<input type="number" min="1" value="${t.ac}" data-field="ac" ${state.character.autoLevelStats?'disabled':''}></label>
       <div class="trooper-equipment"><label>Short simple weapon<select data-field="weapon">${weaponOptionsHtml(t.weapon)}</select></label><label>Shield<input value="${escapeHtml(t.shield)}" data-field="shield"></label></div>
-      <div class="fixed-profile"><strong>Trooper Strike</strong><span>${fmt(mod(state.character.abilities.str)+prof())} to hit · 1d6 ${fmt(prof())} ${weaponDamageType(t)}</span><small>Equipment changes name and damage type only.</small></div>
+      <div class="fixed-profile"><strong>Trooper Strike</strong><span>${fmt(effectiveMod('str')+prof())} to hit · 1d6 ${fmt(prof())} ${weaponDamageType(t)}</span><small>Equipment changes name and damage type only.</small></div>
       <label>Recognised leader<input value="${escapeHtml(t.leader)}" data-field="leader"></label>
       <label>Current order<select data-field="order">${orderOptionsHtml(t.order)}</select></label>
       <p class="small-note">${megaActive()?'Fused into the Mega Unison war-form.':t.status==='formed'?`Shares the Formation pool as a ${segment.current}/${segment.max} HP chunk.`:t.status==='detached'?`Acts after ${escapeHtml(t.leader||'its Temporary Leader')}. ${orderCostText()}.`:t.status==='downed'?'Prone and Incapacitated until healed or recovered.':'Seeking shelter or the Brass’s last known position.'}</p>
@@ -501,7 +573,7 @@ function renderTroopers(){
       if(field==='weapon'&&!trooperWeapons[value])t.weapon='Trooper sword';
       renderAll();scheduleSave();
     }));
-    card.querySelector('[data-act="strike"]').addEventListener('click',()=>{if(t.status!=='detached')return showToast('Only a detached Trooper makes an individual Trooper Strike.');rollAndDisplay(`1d20${fmt(mod(state.character.abilities.str)+prof())}`,`${t.name} Trooper Strike`);});
+    card.querySelector('[data-act="strike"]').addEventListener('click',()=>{if(t.status!=='detached')return showToast('Only a detached Trooper makes an individual Trooper Strike.');rollAndDisplay(`1d20${fmt(effectiveMod('str')+prof())}`,`${t.name} Trooper Strike`);});
     card.querySelector('[data-act="damage"]').addEventListener('click',()=>adjustTrooperHP(t,-1));
     card.querySelector('[data-act="heal"]').addEventListener('click',()=>adjustTrooperHP(t,1));
     card.querySelector('[data-act="return"]').addEventListener('click',()=>{if(megaActive())return showToast('Troopers cannot separate or re-form during Mega Unison.');t.status='formed';t.leader='The Brass';t.order='Form up';renderAll();scheduleSave();showToast(`${t.name} returned to formation.`);});
@@ -519,9 +591,52 @@ function adjustTrooperHP(t,delta){
 function renderSpeciesFeatures(){
   const grid=document.getElementById('speciesFeatureGrid');if(!grid)return;grid.innerHTML='';speciesFeatures.forEach(feature=>{const card=document.createElement('div');card.className='fighter-feature-card species-feature-card';card.innerHTML=`<span>Species · Active</span><h3>${feature.name}</h3><p>${feature.text}</p>`;grid.appendChild(card);});
 }
+function abilityOptions(selected,restrict='any'){
+  const keys=restrict==='strDex'?['str','dex']:abilities;
+  return keys.map(key=>`<option value="${key}" ${selected===key?'selected':''}>${abilityNames[key]}</option>`).join('');
+}
+function featOptions(selected){return Object.keys(supportedFeats).map(name=>`<option value="${escapeHtml(name)}" ${selected===name?'selected':''}>${escapeHtml(name)}</option>`).join('');}
+function renderFightingStyleMechanics(){
+  const panel=document.getElementById('fightingStyleMechanics');if(!panel)return;
+  const style=state.character.fightingStyle;
+  const descriptions={
+    'Defense':'+1 AC is applied automatically.',
+    'Dueling':'+2 damage is applied to the Brass’s one-handed spear attacks.',
+    'Interception':'Reaction action added: reduce damage to an adjacent creature by 1d10 + Proficiency Bonus.',
+    'Protection':'Reaction reminder added: impose disadvantage on an attack against an adjacent ally while wielding a shield.',
+    'Superior Technique':'Gain one d6 superiority die per Short or Long Rest and select a manoeuvre below.',
+    'Other':'No automatic effect. Describe the custom style in Additional Features.'
+  };
+  panel.innerHTML=`<div class="choice-summary"><span>Selected Fighting Style</span><strong>${escapeHtml(style)}</strong><p>${descriptions[style]||'No automatic effect.'}</p>${style==='Superior Technique'?`<label>Manoeuvre<select id="superiorTechniqueManeuver">${superiorTechniqueManeuvers.map(name=>`<option ${name===state.character.superiorTechniqueManeuver?'selected':''}>${name}</option>`).join('')}</select></label><div class="choice-resource">Superiority die: <strong>${state.resources.superiorTechniqueCurrent}/1 d6</strong></div>`:''}</div>`;
+  document.getElementById('superiorTechniqueManeuver')?.addEventListener('change',e=>{state.character.superiorTechniqueManeuver=e.target.value;renderAll();scheduleSave();});
+}
+function renderLevelChoices(){
+  renderFightingStyleMechanics();
+  const grid=document.getElementById('levelChoiceGrid');if(!grid)return;grid.innerHTML='';
+  asiLevels.forEach(lvl=>{
+    const unlocked=level()>=lvl,choice=state.character.levelChoices[String(lvl)],card=document.createElement('div');
+    card.className=`level-choice-card${unlocked?'':' locked'}`;
+    const feat=supportedFeats[choice.feat]||supportedFeats.Tough;
+    let detail='No choice selected.';
+    if(choice.type==='asi')detail=`+1 ${abilityNames[choice.ability1]} and +1 ${abilityNames[choice.ability2]}${choice.ability1===choice.ability2?' (+2 total)':''}.`;
+    if(choice.type==='feat')detail=feat.description;
+    card.innerHTML=`<div class="level-choice-head"><strong>Fighter level ${lvl}</strong><span>${unlocked?'Active':'Locked'}</span></div><label>Choice<select data-choice="type" ${unlocked?'':'disabled'}><option value="none" ${choice.type==='none'?'selected':''}>None</option><option value="asi" ${choice.type==='asi'?'selected':''}>Ability Score Improvement</option><option value="feat" ${choice.type==='feat'?'selected':''}>Feat</option></select></label><div class="choice-asi" ${choice.type==='asi'?'':'hidden'}><label>First +1<select data-choice="ability1">${abilityOptions(choice.ability1)}</select></label><label>Second +1<select data-choice="ability2">${abilityOptions(choice.ability2)}</select></label></div><div class="choice-feat" ${choice.type==='feat'?'':'hidden'}><label>Feat<select data-choice="feat">${featOptions(choice.feat)}</select></label>${feat.abilityChoice?`<label>Ability +1<select data-choice="featAbility">${abilityOptions(choice.featAbility,feat.abilityChoice)}</select></label>`:''}${feat.skillChoice?`<label>Expertise skill<select data-choice="featSkill">${skills.map(([name])=>`<option ${choice.featSkill===name?'selected':''}>${name}</option>`).join('')}</select></label>`:''}</div><p>${escapeHtml(detail)}</p>`;
+    card.querySelectorAll('[data-choice]').forEach(control=>control.addEventListener('change',e=>{
+      const field=e.target.dataset.choice;choice[field]=e.target.value;
+      if(field==='feat'){
+        const next=supportedFeats[choice.feat];if(next?.abilityChoice==='strDex'&&!['str','dex'].includes(choice.featAbility))choice.featAbility='str';
+      }
+      if(field==='feat'&&choice.feat==='Lucky')state.resources.luckyCurrent=luckyMax();
+      if(field==='feat'&&choice.feat==='Inspiring Leader')state.resources.inspiringLeaderAvailable=true;
+      syncDerivedStats();renderAll();scheduleSave();
+    }));
+    grid.appendChild(card);
+  });
+}
 function renderFighterFeatures(){
+  renderLevelChoices();
   const lvl=level(),profile=commandDiceProfile(),summary=document.getElementById('derivedFeatureSummary');
-  summary.innerHTML=`<div><span>Attacks / action</span><strong>${fighterAttacks()}</strong></div><div><span>Formation save DC</span><strong>${formationSaveDC()}</strong></div><div><span>Command Dice</span><strong>${lvl<3?'Locked':`${state.resources.commandDiceCurrent}/${profile.max} d${profile.die}`}</strong></div><div><span>Detached Trooper</span><strong>AC ${detachedTrooperAC()} · ${detachedTrooperMaxHP()} HP</strong></div><div><span>Stance switching</span><strong>${lvl<3?'Locked':stanceSwitchText()}</strong></div><div><span>Temporary orders</span><strong>${lvl>=7?'Free 1/round':'Bonus Action'}</strong></div><div><span>Mega Unison</span><strong>${lvl<15?'Locked':megaActive()?`${state.mega.roundsRemaining} rounds`:(state.resources.megaUsedThisLongRest?'Used':'Ready')}</strong></div>`;
+  summary.innerHTML=`<div><span>Attacks / action</span><strong>${fighterAttacks()}</strong></div><div><span>Formation save DC</span><strong>${formationSaveDC()}</strong></div><div><span>Command Dice</span><strong>${lvl<3?'Locked':`${state.resources.commandDiceCurrent}/${profile.max} d${profile.die}`}</strong></div><div><span>Detached Trooper</span><strong>AC ${detachedTrooperAC()} · ${detachedTrooperMaxHP()} HP</strong></div><div><span>Stance switching</span><strong>${lvl<3?'Locked':stanceSwitchText()}</strong></div><div><span>Temporary orders</span><strong>${lvl>=7?'Free 1/round':'Bonus Action'}</strong></div><div><span>Mega Unison</span><strong>${lvl<15?'Locked':megaActive()?`${state.mega.roundsRemaining} rounds`:(state.resources.megaUsedThisLongRest?'Used':'Ready')}</strong></div><div><span>Fighting Style</span><strong>${escapeHtml(state.character.fightingStyle)}</strong></div><div><span>Active feats</span><strong>${unlockedLevelChoices().filter(c=>c.type==='feat').length}</strong></div>`;
   document.getElementById('fighterLevelBadge').textContent=`Level ${lvl}`;
   const grid=document.getElementById('fighterFeatureGrid');grid.innerHTML='';
   fighterProgression.forEach(feature=>{const unlocked=feature.level<=lvl,card=document.createElement('div');card.className=`fighter-feature-card${unlocked?'':' locked'}`;card.innerHTML=`<span>${escapeHtml(feature.kind)} · Level ${feature.level} · ${unlocked?'Unlocked':'Locked'}</span><h3>${feature.name}</h3><p>${feature.text}</p>`;grid.appendChild(card);});
@@ -540,9 +655,9 @@ function makeRollButton(label,formula,desc,disabled=false){const btn=document.cr
 function makeCommandRollButton(label,formula,desc,disabled=false){const btn=document.createElement('button');btn.type='button';btn.textContent=`${label}: ${formula}`;btn.disabled=disabled||state.resources.commandDiceCurrent<=0;btn.addEventListener('click',()=>spendCommandDie(desc,formula));return btn;}
 function makeCommandSpendButton(label,desc,disabled=false){const btn=document.createElement('button');btn.type='button';btn.textContent=label;btn.disabled=disabled||state.resources.commandDiceCurrent<=0;btn.addEventListener('click',()=>spendCommandDie(desc));return btn;}
 function renderActions(){
-  const str=mod(state.character.abilities.str),p=prof(),attack=str+p,profile=commandDiceProfile(),primary=primaryStanceKey(),formed=formedCount(),detached=state.troopers.find(t=>t.status==='detached'),mega=megaActive();
+  const str=effectiveMod('str'),p=prof(),attack=str+p,profile=commandDiceProfile(),primary=primaryStanceKey(),formed=formedCount(),detached=state.troopers.find(t=>t.status==='detached'),mega=megaActive(),dueling=duelingDamageBonus();
   const actions=[];
-  const spearDamage=mega?`1d6${fmt(str)}+1d8`:`1d6${fmt(str)}`;
+  const spearDamage=mega?`1d6${fmt(str+dueling)}+1d8`:`1d6${fmt(str+dueling)}`;
   actions.push({name:mega?'Mega Unison Spear':"Brass's Spear",tag:'Attack action',text:mega?`Make ${fighterAttacks()} spear attack${fighterAttacks()===1?'':'s'}. Every melee weapon hit deals an additional 1d8 damage while Mega Unison is active.`:`Make ${fighterAttacks()} spear attack${fighterAttacks()===1?'':'s'} when you take the Attack action. Trooper movements and sword strikes may describe these attacks without creating extra attack rolls.`,buttons:[{type:'roll',label:'Attack',formula:`1d20${fmt(attack)}`,desc:mega?'Mega Unison Spear attack':"Brass's Spear attack"},{type:'roll',label:'Damage',formula:spearDamage,desc:mega?'Mega Unison Spear damage':"Brass's Spear damage"}]});
   if(mega)actions.push({name:'Unison Surge',tag:'Mega Unison · Once per turn',text:`Once on each of your turns, add ${p} damage to one melee weapon hit as the five Troopers reinforce the Brass from within.`,style:'mega-offense',buttons:[{type:'roll',label:'Bonus damage',formula:String(p),desc:'Mega Unison once-per-turn bonus damage'}]});
   actions.push({name:'Trooper Strike',tag:'Detached Trooper',text:mega?'All five Troopers are fused into the Brass and cannot act separately.':detached?`${detached.name} attacks with ${detached.weapon}. The fixed profile ignores weapon bonuses, mastery, feats and Fighting Styles; only the damage type changes to ${weaponDamageType(detached)}.`:'Detach one Trooper to enable its fixed short-weapon attack.',disabled:mega||!detached,buttons:[{type:'roll',label:'Attack',formula:`1d20${fmt(attack)}`,desc:`${detached?.name||'Trooper'} Strike`},{type:'roll',label:'Damage',formula:`1d6${fmt(p)}`,desc:`${detached?.name||'Trooper'} Strike (${detached?weaponDamageType(detached):'weapon'}) damage`}]});
@@ -553,23 +668,43 @@ function renderActions(){
   if(level()>=7) actions.push({name:'Interpose',tag:'Delegated Command · Reaction',text:mega?'The Troopers are fused and cannot Interpose separately.':`A detached Trooper may move up to 10 feet to become adjacent to its Temporary Leader and reduce damage to that leader by ${p}, provided it can reach them.`,disabled:mega||!detached,buttons:[{type:'roll',label:'Reduce',formula:String(p),desc:'Detached Trooper Interpose'}]});
   if(level()>=15) actions.push({name:'Emergency Recall',tag:'Instant Reformation · Reaction',text:mega?'All Troopers are already fused into the Brass.':'A detached Trooper may immediately move up to its speed toward the Brass when recalled. The Return button on its roster card rejoins it once it reaches formation.',disabled:mega||!detached,buttons:[]});
   if(mega){
-    actions.push({name:'Winged Breakthrough',tag:'Mega Unison · Action · 1/use',text:`Move up to 30 feet in a straight line without provoking Opportunity Attacks, then make one melee weapon attack. On a hit, deal normal Mega Unison spear damage plus 2d8 piercing and 2d8 slashing damage. The target makes a Strength save against DC ${formationSaveDC()} or is pushed 10 feet and knocked Prone.`,style:'mega-offense',buttons:[{type:'megaBreakthrough',label:state.mega.breakthroughAvailable?'Use & roll attack':'Attack already used',disabled:!state.mega.breakthroughAvailable},{type:'roll',label:'Spear + Unison',formula:`1d6${fmt(str)}+1d8`,desc:'Winged Breakthrough spear damage'},{type:'roll',label:'+ Piercing',formula:'2d8',desc:'Winged Breakthrough piercing damage'},{type:'roll',label:'+ Slashing',formula:'2d8',desc:'Winged Breakthrough slashing damage'}]});
+    actions.push({name:'Winged Breakthrough',tag:'Mega Unison · Action · 1/use',text:`Move up to 30 feet in a straight line without provoking Opportunity Attacks, then make one melee weapon attack. On a hit, deal normal Mega Unison spear damage plus 2d8 piercing and 2d8 slashing damage. The target makes a Strength save against DC ${formationSaveDC()} or is pushed 10 feet and knocked Prone.`,style:'mega-offense',buttons:[{type:'megaBreakthrough',label:state.mega.breakthroughAvailable?'Use & roll attack':'Attack already used',disabled:!state.mega.breakthroughAvailable},{type:'roll',label:'Spear + Unison',formula:`1d6${fmt(str+dueling)}+1d8`,desc:'Winged Breakthrough spear damage'},{type:'roll',label:'+ Piercing',formula:'2d8',desc:'Winged Breakthrough piercing damage'},{type:'roll',label:'+ Slashing',formula:'2d8',desc:'Winged Breakthrough slashing damage'}]});
     actions.push({name:'Aegis of the Five',tag:'Mega Unison · Action',text:`Until the start of your next turn, gain +2 AC, resistance to bludgeoning, piercing and slashing damage, immunity to being knocked Prone, and grant half cover to creatures of your choice within 5 feet.`,style:'mega-defense',buttons:[{type:'megaAegis',label:state.mega.aegisActive?'End Aegis':'Activate Aegis'}]});
   }
   if(level()>=18) actions.push({name:'Trooper Sacrifice',tag:'Perfect Formation · 1/Long Rest',text:mega?'This feature is unavailable while the Troopers are fused.':`When the cohort is reduced to 0 HP, one formed Trooper becomes Downed and the cohort remains at 1 HP. ${state.resources.lastStandAvailable?'Available.':'Already used this Long Rest.'}`,disabled:mega||!state.resources.lastStandAvailable||state.character.currentHP>0||formed<1,buttons:[{type:'special',label:'Use at 0 HP'}]});
+  if(state.character.fightingStyle==='Interception')actions.push({name:'Interception',tag:'Fighting Style · Reaction',text:`When a creature you can see hits an adjacent target other than you, reduce the damage by 1d10 + ${p}. You must be wielding a shield or weapon.`,buttons:[{type:'roll',label:'Reduce damage',formula:`1d10${fmt(p)}`,desc:'Interception damage reduction'}]});
+  if(state.character.fightingStyle==='Protection')actions.push({name:'Protection',tag:'Fighting Style · Reaction',text:'While wielding a shield, impose disadvantage on an attack against an adjacent creature you can see.',buttons:[]});
+  if(state.character.fightingStyle==='Superior Technique'){
+    const maneuver=state.character.superiorTechniqueManeuver;
+    const maneuverText={
+      'Precision Attack':'Spend the d6 after an attack roll to add it to the roll.',
+      'Trip Attack':`On a weapon hit, spend the d6 to add it to damage; the target saves against DC ${formationSaveDC()} or falls Prone.`,
+      'Pushing Attack':`On a weapon hit, spend the d6 to add it to damage; the target saves against DC ${formationSaveDC()} or is pushed up to 15 feet.`,
+      'Rally':`As a Bonus Action, spend the d6; an ally gains the roll + ${Math.max(0,effectiveMod('cha'))} temporary HP.`
+    };
+    actions.push({name:`Superior Technique: ${maneuver}`,tag:'Fighting Style · 1 die/rest',text:maneuverText[maneuver],buttons:[{type:'superiorTechnique',label:state.resources.superiorTechniqueCurrent?'Spend d6':'Die spent'}]});
+  }
+  if(hasFeat('Heavy Armor Master'))actions.push({name:'Heavy Armor Master',tag:'Feat · Passive',text:`While wearing heavy armour, reduce nonmagical bludgeoning, piercing or slashing damage by ${p}.`,buttons:[{type:'roll',label:'Damage reduction',formula:String(p),desc:'Heavy Armor Master reduction'}]});
+  if(hasFeat('Shield Master'))actions.push({name:'Shield Master',tag:'Feat · Bonus Action / Reaction',text:'After attacking, use a Bonus Action to shove a creature within 5 feet with your shield. Add the feat’s defensive benefits to applicable Dexterity saves.',buttons:[]});
+  if(hasFeat('Inspiring Leader'))actions.push({name:'Inspiring Leader',tag:'Feat · Short/Long Rest',text:`Grant ${inspiringLeaderTempHP()} temporary HP to the cohort and eligible allies after a 10-minute speech.`,buttons:[{type:'inspiringLeader',label:state.resources.inspiringLeaderAvailable?`Grant ${inspiringLeaderTempHP()} temp HP`:'Already used'}]});
+  if(hasFeat('Lucky'))actions.push({name:'Lucky',tag:'Feat · Luck Points',text:`Spend a Luck Point to reroll an eligible d20 test. ${state.resources.luckyCurrent}/${luckyMax()} points remain.`,buttons:[{type:'lucky',label:state.resources.luckyCurrent?'Spend Luck Point':'No points'}]});
   if(secondaryStanceKey()) actions.push({name:'Secondary Stance',tag:'Perfect Formation',text:secondaryBenefitText(secondaryStanceKey()),buttons:[]});
 
   const grid=document.getElementById('actionGrid');grid.innerHTML='';
-  actions.forEach(action=>{const card=document.createElement('div');card.className=`action-card${action.style?` ${action.style}`:''}`;if(action.disabled)card.style.opacity='.52';card.innerHTML=`<div class="action-top"><h3>${action.name}</h3><span class="action-tag">${action.tag}</span></div><p>${action.text}</p><div class="action-buttons"></div>`;const buttons=card.querySelector('.action-buttons');(action.buttons||[]).forEach(b=>{let btn;if(b.type==='commandRoll')btn=makeCommandRollButton(b.label,b.formula,b.desc,action.disabled);else if(b.type==='commandSpend')btn=makeCommandSpendButton(b.label,b.desc,action.disabled);else if(b.type==='special'){btn=document.createElement('button');btn.type='button';btn.textContent=b.label;btn.disabled=action.disabled;btn.addEventListener('click',useLastStand);}else if(b.type==='megaBreakthrough'){btn=document.createElement('button');btn.type='button';btn.textContent=b.label;btn.disabled=Boolean(action.disabled||b.disabled);btn.addEventListener('click',useWingedBreakthrough);}else if(b.type==='megaAegis'){btn=document.createElement('button');btn.type='button';btn.textContent=b.label;btn.addEventListener('click',toggleAegis);}else btn=makeRollButton(b.label,b.formula,b.desc,action.disabled);buttons.appendChild(btn);});grid.appendChild(card);});
+  actions.forEach(action=>{const card=document.createElement('div');card.className=`action-card${action.style?` ${action.style}`:''}`;if(action.disabled)card.style.opacity='.52';card.innerHTML=`<div class="action-top"><h3>${action.name}</h3><span class="action-tag">${action.tag}</span></div><p>${action.text}</p><div class="action-buttons"></div>`;const buttons=card.querySelector('.action-buttons');(action.buttons||[]).forEach(b=>{let btn;if(b.type==='commandRoll')btn=makeCommandRollButton(b.label,b.formula,b.desc,action.disabled);else if(b.type==='commandSpend')btn=makeCommandSpendButton(b.label,b.desc,action.disabled);else if(b.type==='special'){btn=document.createElement('button');btn.type='button';btn.textContent=b.label;btn.disabled=action.disabled;btn.addEventListener('click',useLastStand);}else if(b.type==='megaBreakthrough'){btn=document.createElement('button');btn.type='button';btn.textContent=b.label;btn.disabled=Boolean(action.disabled||b.disabled);btn.addEventListener('click',useWingedBreakthrough);}else if(b.type==='megaAegis'){btn=document.createElement('button');btn.type='button';btn.textContent=b.label;btn.addEventListener('click',toggleAegis);}else if(b.type==='superiorTechnique'){btn=document.createElement('button');btn.type='button';btn.textContent=b.label;btn.disabled=action.disabled||state.resources.superiorTechniqueCurrent<=0;btn.addEventListener('click',()=>{state.resources.superiorTechniqueCurrent=0;rollAndDisplay('1d6',state.character.superiorTechniqueManeuver);renderAll();scheduleSave();});}else if(b.type==='inspiringLeader'){btn=document.createElement('button');btn.type='button';btn.textContent=b.label;btn.disabled=action.disabled||!state.resources.inspiringLeaderAvailable;btn.addEventListener('click',()=>{state.character.tempHP=Math.max(state.character.tempHP,inspiringLeaderTempHP());state.resources.inspiringLeaderAvailable=false;renderAll();scheduleSave();showToast('Inspiring Leader temporary HP applied.');});}else if(b.type==='lucky'){btn=document.createElement('button');btn.type='button';btn.textContent=b.label;btn.disabled=action.disabled||state.resources.luckyCurrent<=0;btn.addEventListener('click',()=>{state.resources.luckyCurrent--;renderAll();scheduleSave();showToast('Luck Point spent.');});}else btn=makeRollButton(b.label,b.formula,b.desc,action.disabled);buttons.appendChild(btn);});grid.appendChild(card);});
   document.getElementById('attackSummary').textContent=`Attack ${fmt(attack)} · ${fighterAttacks()} / action · DC ${formationSaveDC()}${mega?' · Mega Unison':''}`;
 }
 
 function renderDynamic(){
-  const stance=primaryStance(),p=prof(),mega=megaActive(),megaAC=mega?1:0,aegisAC=mega&&state.mega.aegisActive?2:0,ac=Number(state.character.baseAC)+(stance?.ac||0)+megaAC+aegisAC,speed=mega?30:Math.max(0,Number(state.character.baseSpeed)+(stance?.speed||0)),initiative=mod(state.character.abilities.dex)+Number(state.character.initiativeBonus||0),perceptionRank=Number(state.character.skills.Perception||0),passive=10+mod(state.character.abilities.wis)+p*perceptionRank;
+  const stance=primaryStance(),p=prof(),mega=megaActive(),megaAC=mega?1:0,aegisAC=mega&&state.mega.aegisActive?2:0,styleAC=fightingStyleACBonus();
+  const ac=Number(state.character.baseAC)+styleAC+(stance?.ac||0)+megaAC+aegisAC;
+  const speed=mega?30:Math.max(0,Number(state.character.baseSpeed)+featSpeedBonus()+(stance?.speed||0));
+  const initiative=effectiveMod('dex')+Number(state.character.initiativeBonus||0)+featInitiativeBonus();
+  const perceptionRank=effectiveSkillRank('Perception'),passive=10+effectiveMod('wis')+p*perceptionRank;
   document.getElementById('displayAC').textContent=ac;
-  document.getElementById('acBreakdown').textContent=`Base ${state.character.baseAC}${stance?.ac?` · ${stance.name} ${fmt(stance.ac)}`:''}${mega?' · Mega +1':''}${aegisAC?' · Aegis +2':''}`;
+  document.getElementById('acBreakdown').textContent=`Base ${state.character.baseAC}${styleAC?' · Defense +1':''}${stance?.ac?` · ${stance.name} ${fmt(stance.ac)}`:''}${mega?' · Mega +1':''}${aegisAC?' · Aegis +2':''}`;
   document.getElementById('displaySpeed').textContent=speed;
-  const speedBreakdown=document.getElementById('speedBreakdown');if(speedBreakdown)speedBreakdown.textContent=mega?'feet · fly 30 ft (land at turn end)':'feet';
+  const speedBreakdown=document.getElementById('speedBreakdown');if(speedBreakdown)speedBreakdown.textContent=mega?'feet · fly 30 ft (land at turn end)':featSpeedBonus()?'feet · Mobile +10':'feet';
   document.getElementById('displayInitiative').textContent=fmt(initiative);document.getElementById('displayProf').textContent=fmt(p);document.getElementById('passivePerception').textContent=passive;
   const primaryName=mega?'Mega Unison':stance?.name||'Phalanx Formation',secondaryName=!mega&&secondaryStanceKey()?` + ${stanceRules(secondaryStanceKey()).name}`:'';document.getElementById('displayStance').textContent=`${primaryName}${secondaryName}`;
   document.getElementById('currentHPDisplay').textContent=state.character.currentHP;document.getElementById('maxHPDisplay').textContent=state.character.maxHP;const hpPercent=Math.max(0,Math.min(1,state.character.currentHP/Math.max(1,state.character.maxHP)));document.getElementById('hpRing').style.setProperty('--hp-angle',`${hpPercent*360}deg`);
@@ -597,12 +732,12 @@ function setupDice(){
   const quick=document.getElementById('quickDice');[4,6,8,10,12,20,100].forEach(s=>{const btn=document.createElement('button');btn.type='button';btn.textContent=`d${s}`;btn.addEventListener('click',()=>rollAndDisplay(`1d${s}`,`d${s}`));quick.appendChild(btn);});
   const adv=document.createElement('button');adv.type='button';adv.textContent='Adv';adv.addEventListener('click',()=>{const a=parseAndRoll('1d20'),b=parseAndRoll('1d20'),total=Math.max(a.total,b.total),detail=`kept ${total} from ${a.total} / ${b.total}`;document.getElementById('rollResult').innerHTML=`<strong>${total}</strong><span>Advantage · 2d20 keep highest · ${detail}</span>`;recordHistory('Advantage','2d20kh1',total,detail);scheduleSave();});quick.appendChild(adv);
   document.getElementById('customRollBtn').addEventListener('click',()=>rollAndDisplay(document.getElementById('customRoll').value,'Custom roll'));document.getElementById('customRoll').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('customRollBtn').click();});
-  document.querySelector('[data-roll="initiative"]').addEventListener('click',()=>{if(level()>=18&&state.resources.commandDiceCurrent===0){state.resources.commandDiceCurrent=1;showToast('Perfect Formation restores one Command Die.');}rollAndDisplay(`1d20${fmt(mod(state.character.abilities.dex)+Number(state.character.initiativeBonus||0))}`,'Initiative');renderAll();scheduleSave();});
+  document.querySelector('[data-roll="initiative"]').addEventListener('click',()=>{if(level()>=18&&state.resources.commandDiceCurrent===0){state.resources.commandDiceCurrent=1;showToast('Perfect Formation restores one Command Die.');}rollAndDisplay(`1d20${fmt(effectiveMod('dex')+Number(state.character.initiativeBonus||0))}`,'Initiative');renderAll();scheduleSave();});
 }
 function setupControls(){
   document.getElementById('damageBtn').addEventListener('click',()=>{applyFormationDamage(document.getElementById('hpAmount').value);renderAll();scheduleSave();});document.getElementById('healBtn').addEventListener('click',()=>{healFormation(document.getElementById('hpAmount').value);renderAll();scheduleSave();});
-  document.getElementById('shortRestBtn').addEventListener('click',()=>{const available=state.character.hitDiceRemaining,answer=prompt(`Spend how many Hit Dice? (${available} available)` ,available>0?'1':'0'),count=Math.max(0,Math.min(available,Number(answer||0)));let recovered=0;if(count){const formula=`${count}d10${fmt(mod(state.character.abilities.con)*count)}`,result=parseAndRoll(formula);recovered=result.total;healFormation(recovered);state.character.hitDiceRemaining-=count;recordHistory('Short-rest healing',formula,result.total,result.detail);}state.resources.commandDiceCurrent=commandDiceProfile().max;renderAll();scheduleSave();showToast(`Short Rest complete${count?`; recovered ${recovered} HP`:''}. Command Dice restored.`);});
-  document.getElementById('longRestBtn').addEventListener('click',()=>{state.character.currentHP=state.character.maxHP;state.character.tempHP=0;state.character.hitDiceRemaining=Math.min(state.character.hitDiceMax,state.character.hitDiceRemaining+Math.max(1,Math.floor(state.character.hitDiceMax/2)));state.resources.commandDiceCurrent=commandDiceProfile().max;state.resources.lastStandAvailable=true;state.resources.megaUsedThisLongRest=false;state.mega={active:false,roundsRemaining:0,previousStance:'',breakthroughAvailable:true,aegisActive:false};state.troopers.forEach(t=>{t.currentHP=t.maxHP;if(t.status==='downed')t.status='formed';if(t.status==='formed'){t.leader='The Brass';t.order='Form up';}});renderAll();scheduleSave();showToast('Long Rest completed.');});
+  document.getElementById('shortRestBtn').addEventListener('click',()=>{const available=state.character.hitDiceRemaining,answer=prompt(`Spend how many Hit Dice? (${available} available)` ,available>0?'1':'0'),count=Math.max(0,Math.min(available,Number(answer||0)));let recovered=0;if(count){const formula=`${count}d10${fmt(effectiveMod('con')*count)}`,result=parseAndRoll(formula);recovered=result.total;healFormation(recovered);state.character.hitDiceRemaining-=count;recordHistory('Short-rest healing',formula,result.total,result.detail);}state.resources.commandDiceCurrent=commandDiceProfile().max;state.resources.superiorTechniqueCurrent=1;state.resources.inspiringLeaderAvailable=true;renderAll();scheduleSave();showToast(`Short Rest complete${count?`; recovered ${recovered} HP`:''}. Command Dice restored.`);});
+  document.getElementById('longRestBtn').addEventListener('click',()=>{state.character.currentHP=state.character.maxHP;state.character.tempHP=0;state.character.hitDiceRemaining=Math.min(state.character.hitDiceMax,state.character.hitDiceRemaining+Math.max(1,Math.floor(state.character.hitDiceMax/2)));state.resources.commandDiceCurrent=commandDiceProfile().max;state.resources.superiorTechniqueCurrent=1;state.resources.luckyCurrent=luckyMax();state.resources.inspiringLeaderAvailable=true;state.resources.lastStandAvailable=true;state.resources.megaUsedThisLongRest=false;state.mega={active:false,roundsRemaining:0,previousStance:'',breakthroughAvailable:true,aegisActive:false};state.troopers.forEach(t=>{t.currentHP=t.maxHP;if(t.status==='downed')t.status='formed';if(t.status==='formed'){t.leader='The Brass';t.order='Form up';}});renderAll();scheduleSave();showToast('Long Rest completed.');});
   document.getElementById('printBtn').addEventListener('click',()=>window.print());document.getElementById('pdfBtn').addEventListener('click',exportPdf);document.getElementById('exportBtn').addEventListener('click',exportState);document.getElementById('talespireBtn').addEventListener('click',exportTaleSpireState);document.getElementById('importFile').addEventListener('change',importState);document.getElementById('resetBtn').addEventListener('click',()=>{if(confirm('Reset the entire sheet to its default character?')){state=defaultState();syncDerivedStats({preserveDamage:false});localStorage.removeItem(STORAGE_KEY);renderAll();scheduleSave();showToast('Sheet reset.');}});
 }
 function exportState(){const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`${(state.character.name||'rankling-cohort').toLowerCase().replace(/[^a-z0-9]+/g,'-')}.json`;a.click();URL.revokeObjectURL(url);showToast('Character exported.');}
@@ -626,18 +761,18 @@ function buildTaleSpirePayload(){
       level:level(),
       gender:state.character.artGender,
       background:state.character.background,
-      fightingStyle:state.character.fightingStyle
+      fightingStyle:state.character.fightingStyle,levelChoices:state.character.levelChoices
     },
     stats:{
       ac:Number(document.getElementById('displayAC')?.textContent||state.character.baseAC),
       speed:Number(document.getElementById('displaySpeed')?.textContent||state.character.baseSpeed),
-      initiative:mod(state.character.abilities.dex)+Number(state.character.initiativeBonus||0),
+      initiative:effectiveMod('dex')+Number(state.character.initiativeBonus||0)+featInitiativeBonus(),
       proficiency:prof(),
       passivePerception:Number(document.getElementById('passivePerception')?.textContent||0),
       hp:{current:state.character.currentHP,max:state.character.maxHP,temp:state.character.tempHP},
-      abilities:state.character.abilities,
-      saves:state.character.saves,
-      skills:state.character.skills
+      abilities:Object.fromEntries(abilities.map(key=>[key,effectiveAbility(key)])),
+      saves:Object.fromEntries(abilities.map(key=>[key,effectiveSaveProficient(key)])),
+      skills:Object.fromEntries(skills.map(([name])=>[name,effectiveSkillRank(name)]))
     },
     formation:{
       state:formationState(),

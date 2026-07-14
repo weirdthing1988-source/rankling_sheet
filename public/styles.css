@@ -389,3 +389,28 @@ input:disabled, select:disabled { opacity:.68; cursor:not-allowed; background:#1
 @media print {
   .mega-button-row { display:none!important; }
 }
+
+/* v2.0 Fighting Style and level-choice mechanics */
+.fighting-style-mechanics { margin-bottom:18px; }
+.choice-summary { display:grid; grid-template-columns:auto 1fr; gap:6px 14px; align-items:center; padding:15px; border:1px solid var(--line); border-radius:14px; background:rgba(255,255,255,.025); }
+.choice-summary>span { color:var(--muted); font-size:.72rem; text-transform:uppercase; letter-spacing:.07em; }
+.choice-summary>strong { color:var(--gold-bright); font-family:Georgia,serif; font-size:1.15rem; }
+.choice-summary>p { grid-column:1 / -1; margin:2px 0 0; color:var(--ink); }
+.choice-summary label { grid-column:1 / -1; display:grid; gap:6px; color:var(--muted); font-size:.75rem; text-transform:uppercase; letter-spacing:.05em; }
+.choice-summary select { width:100%; }
+.choice-resource { grid-column:1 / -1; color:var(--muted); }
+.choice-resource strong { color:var(--gold-bright); }
+.level-choice-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.level-choice-card { padding:14px; border:1px solid var(--line); border-radius:14px; background:rgba(255,255,255,.025); }
+.level-choice-card.locked { opacity:.52; }
+.level-choice-head { display:flex; justify-content:space-between; gap:12px; align-items:center; margin-bottom:10px; }
+.level-choice-head strong { color:var(--gold-bright); font-family:Georgia,serif; }
+.level-choice-head span { color:var(--muted); font-size:.7rem; text-transform:uppercase; letter-spacing:.08em; }
+.level-choice-card label { display:grid; gap:5px; margin-top:8px; color:var(--muted); font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; }
+.level-choice-card select { width:100%; }
+.level-choice-card p { margin:10px 0 0; color:var(--ink); font-size:.82rem; line-height:1.45; }
+.choice-asi,.choice-feat { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.choice-asi[hidden],.choice-feat[hidden] { display:none; }
+.effective-score { display:block; margin-top:4px; color:var(--gold-bright); font-size:.64rem; letter-spacing:.03em; }
+@media (max-width:800px){.level-choice-grid{grid-template-columns:1fr}.choice-asi,.choice-feat{grid-template-columns:1fr}}
+@media print {.fighting-style-mechanics,.level-choice-grid{break-inside:avoid}.level-choice-card.locked{display:none}}
